@@ -1,3 +1,5 @@
+// check  线程私有数据
+
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 //
@@ -42,6 +44,7 @@ class ThreadLocal : noncopyable
 
  private:
 
+// 当每个线程结束时，系统将调用这个函数来释放绑定在这个键上的内存块
   static void destructor(void *x)
   {
     T* obj = static_cast<T*>(x);
@@ -51,7 +54,7 @@ class ThreadLocal : noncopyable
   }
 
  private:
-  pthread_key_t pkey_;
+  pthread_key_t pkey_;    // 线程 私有键
 };
 
 }  // namespace muduo

@@ -1,3 +1,5 @@
+// check  线程池
+
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 //
@@ -11,12 +13,13 @@
 #include "muduo/base/Thread.h"
 #include "muduo/base/Types.h"
 
-#include <deque>
+#include <deque>    // 队列
 #include <vector>
 
 namespace muduo
 {
 
+// 线程池不可复制
 class ThreadPool : noncopyable
 {
  public:
@@ -38,6 +41,7 @@ class ThreadPool : noncopyable
 
   size_t queueSize() const;
 
+  // 如果最大阻塞队列大于 0 ，可以阻塞
   // Could block if maxQueueSize > 0
   // There is no move-only version of std::function in C++ as of C++14.
   // So we don't need to overload a const& and an && versions

@@ -22,7 +22,7 @@ namespace CurrentThread
   // 存储线程id字符串
   extern __thread char t_tidString[32];
   extern __thread int t_tidStringLength;
-  extern __thread const char* t_threadName;
+  extern __thread const char* t_threadName; // 用于记录当前线程的状态
 
   void cacheTid();
 

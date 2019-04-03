@@ -24,6 +24,7 @@ ThreadPool::ThreadPool(const string& nameArg)
 
 ThreadPool::~ThreadPool()
 {
+  // 如果正在运行则 stop
   if (running_)
   {
     stop();
@@ -43,6 +44,7 @@ void ThreadPool::start(int numThreads)
           std::bind(&ThreadPool::runInThread, this), name_+id));
     threads_[i]->start();
   }
+  // 如果不是多线程 并且有线程初始化回调函数
   if (numThreads == 0 && threadInitCallback_)
   {
     threadInitCallback_();
@@ -68,8 +70,10 @@ size_t ThreadPool::queueSize() const
   return queue_.size();
 }
 
+// 存入新的任务
 void ThreadPool::run(Task task)
 {
+  // 如果是单线程，直接运行 task
   if (threads_.empty())
   {
     task();
@@ -77,12 +81,14 @@ void ThreadPool::run(Task task)
   else
   {
     MutexLockGuard lock(mutex_);
+    // 在工作线程都满的情况 等待
     while (isFull())
     {
       notFull_.wait();
     }
     assert(!isFull());
 
+    // 将 task 添加到任务队列中，提醒工作线程去执行
     queue_.push_back(std::move(task));
     notEmpty_.notify();
   }
@@ -92,15 +98,19 @@ ThreadPool::Task ThreadPool::take()
 {
   MutexLockGuard lock(mutex_);
   // always use a while-loop, due to spurious wakeup
+  // 等待工作队列中的元素
   while (queue_.empty() && running_)
   {
     notEmpty_.wait();
   }
+
+  // std::funtional<void()>
   Task task;
   if (!queue_.empty())
   {
     task = queue_.front();
     queue_.pop_front();
+    // 取出一个任务后 ， 通知线程池可以放入新的任务
     if (maxQueueSize_ > 0)
     {
       notFull_.notify();
@@ -109,6 +119,7 @@ ThreadPool::Task ThreadPool::take()
   return task;
 }
 
+// 判断 任务队列是否已满
 bool ThreadPool::isFull() const
 {
   mutex_.assertLocked();
@@ -119,12 +130,14 @@ void ThreadPool::runInThread()
 {
   try
   {
+    // 执行 线程初始化回调函数
     if (threadInitCallback_)
     {
       threadInitCallback_();
     }
     while (running_)
     {
+      // std::funtional<void()>
       Task task(take());
       if (task)
       {

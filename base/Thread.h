@@ -1,3 +1,5 @@
+// check 对线程的封装， 使用ThreadData 完成对线程函数的封装和执行
+
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 //
@@ -34,6 +36,7 @@ class Thread : noncopyable
   pid_t tid() const { return tid_; }
   const string& name() const { return name_; }
 
+  // 类 静态函数
   static int numCreated() { return numCreated_.get(); }
 
  private:

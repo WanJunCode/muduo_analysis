@@ -4,6 +4,7 @@
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 
 #include "muduo/base/Thread.h"
+
 #include "muduo/base/CurrentThread.h"
 #include "muduo/base/Exception.h"
 #include "muduo/base/Logging.h"
@@ -23,6 +24,7 @@ namespace muduo
 namespace detail
 {
 
+// 获得线程id
 pid_t gettid()
 {
   return static_cast<pid_t>(::syscall(SYS_gettid));
@@ -37,7 +39,7 @@ void afterFork()
   // no need to call pthread_atfork(NULL, NULL, &afterFork);
 }
 
-// 线程名称初始化
+// 线程名称 初始器
 class ThreadNameInitializer
 {
  public:
@@ -46,20 +48,22 @@ class ThreadNameInitializer
     muduo::CurrentThread::t_threadName = "main";
     // 缓存线程id
     CurrentThread::tid();
-    // 设置 fork 后需要调用的函数
+    // 设置线程线程 fork 后需要调用的函数
     pthread_atfork(NULL, NULL, &afterFork);
   }
 };
 
+// 定义一个全局变量 线程名称 初始器
 ThreadNameInitializer init;
 
+// 线程数据
 struct ThreadData
 {
   typedef muduo::Thread::ThreadFunc ThreadFunc;
-  ThreadFunc func_;
-  string name_;
-  pid_t* tid_;
-  CountDownLatch* latch_;
+  ThreadFunc func_;         // 线程执行函数
+  string name_;             // 线程名称
+  pid_t* tid_;              // 线程 id
+  CountDownLatch* latch_;   // 用于指明线程是否 执行完成
 
   ThreadData(ThreadFunc func,
              const string& name,
@@ -71,18 +75,23 @@ struct ThreadData
       latch_(latch)
   { }
 
+  // 在线程中执行的函数
   void runInThread()
   {
+    // 获得当前线程id
     *tid_ = muduo::CurrentThread::tid();
     tid_ = NULL;
     latch_->countDown();
     latch_ = NULL;
 
+    // 赋值线程名称
     muduo::CurrentThread::t_threadName = name_.empty() ? "muduoThread" : name_.c_str();
     ::prctl(PR_SET_NAME, muduo::CurrentThread::t_threadName);
     try
     {
+      // 执行该函数
       func_();
+      // 设置当前线程名称为 finished
       muduo::CurrentThread::t_threadName = "finished";
     }
     catch (const Exception& ex)
@@ -107,8 +116,9 @@ struct ThreadData
       throw; // rethrow
     }
   }
-};
+};//struct ThreadData
 
+// 开始执行的线程函数
 void* startThread(void* obj)
 {
   ThreadData* data = static_cast<ThreadData*>(obj);
@@ -119,6 +129,8 @@ void* startThread(void* obj)
 
 }  // namespace detail
 
+
+// =============================  CurrentThread  ==============================
 // 缓存 线程id
 void CurrentThread::cacheTid()
 {
@@ -130,6 +142,7 @@ void CurrentThread::cacheTid()
   }
 }
 
+// 判断是否主线程id
 bool CurrentThread::isMainThread()
 {
   // 线程id 和 进程id 的比较
@@ -145,11 +158,13 @@ void CurrentThread::sleepUsec(int64_t usec)
   ::nanosleep(&ts, NULL);
 }
 
+// =============================  Thread  ==============================
+// 定义 原子变量 用于记录创建了多少线程
 AtomicInt32 Thread::numCreated_;
 
 Thread::Thread(ThreadFunc func, const string& n)
   : started_(false),
-    joined_(false),
+    joined_(false),     // 默认是不需要等待线程结束
     pthreadId_(0),
     tid_(0),
     func_(std::move(func)),
@@ -167,6 +182,7 @@ Thread::~Thread()
   }
 }
 
+// 使用 原子变量 设置 Thread id
 void Thread::setDefaultName()
 {
   int num = numCreated_.incrementAndGet();
@@ -182,16 +198,19 @@ void Thread::start()
 {
   assert(!started_);
   started_ = true;
+  // 创建一个 ThreadData 最为 obj 传入 线程函数中
   // FIXME: move(func_)
   detail::ThreadData* data = new detail::ThreadData(func_, name_, &tid_, &latch_);
   if (pthread_create(&pthreadId_, NULL, &detail::startThread, data))
   {
+    // 线程创建失败
     started_ = false;
     delete data; // or no delete?
     LOG_SYSFATAL << "Failed in pthread_create";
   }
   else
   {
+    // 在此等待 线程函数执行完毕
     latch_.wait();
     assert(tid_ > 0);
   }
@@ -202,6 +221,7 @@ int Thread::join()
   assert(started_);
   assert(!joined_);
   joined_ = true;
+  // 等待函数执行完毕
   return pthread_join(pthreadId_, NULL);
 }
 
