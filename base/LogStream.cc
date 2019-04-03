@@ -228,6 +228,7 @@ void FixedBuffer<SIZE>::cookieEnd()
 {
 }
 
+// 
 void LogStream::staticCheck()
 {
   static_assert(kMaxNumericSize - 10 > std::numeric_limits<double>::digits10,
@@ -302,6 +303,7 @@ LogStream& LogStream::operator<<(unsigned long long v)
 LogStream& LogStream::operator<<(const void* p)
 {
   uintptr_t v = reinterpret_cast<uintptr_t>(p);
+  // kMaxNumericSize == 32
   if (buffer_.avail() >= kMaxNumericSize)
   {
     char* buf = buffer_.current();
@@ -327,6 +329,7 @@ LogStream& LogStream::operator<<(double v)
 template<typename T>
 Fmt::Fmt(const char* fmt, T val)
 {
+  // must be number
   static_assert(std::is_arithmetic<T>::value == true, "Must be arithmetic type");
 
   length_ = snprintf(buf_, sizeof buf_, fmt, val);

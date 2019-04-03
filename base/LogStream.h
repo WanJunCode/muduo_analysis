@@ -1,3 +1,5 @@
+// check   (FixedBuffer  LogStream  Fmt)
+
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 //
@@ -86,6 +88,7 @@ class FixedBuffer : noncopyable
 
 }  // namespace detail
 
+// 
 class LogStream : noncopyable
 {
   typedef LogStream self;

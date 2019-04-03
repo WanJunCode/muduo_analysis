@@ -1,4 +1,4 @@
-// check
+// check 不可复制的基类
 
 #ifndef MUDUO_BASE_NONCOPYABLE_H
 #define MUDUO_BASE_NONCOPYABLE_H

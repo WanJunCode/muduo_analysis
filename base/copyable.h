@@ -1,3 +1,5 @@
+// check 可以复制的基类
+
 #ifndef MUDUO_BASE_COPYABLE_H
 #define MUDUO_BASE_COPYABLE_H
 

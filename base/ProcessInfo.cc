@@ -23,6 +23,7 @@ namespace muduo
 namespace detail
 {
 __thread int t_numOpenedFiles = 0;
+// 文件描述符 过滤器，记录打开了多少 fd
 int fdDirFilter(const struct dirent* d)
 {
   if (::isdigit(d->d_name[0]))
@@ -33,6 +34,7 @@ int fdDirFilter(const struct dirent* d)
 }
 
 __thread std::vector<pid_t>* t_pids = NULL;
+// 任务文件夹 过滤器
 int taskDirFilter(const struct dirent* d)
 {
   if (::isdigit(d->d_name[0]))
@@ -42,6 +44,7 @@ int taskDirFilter(const struct dirent* d)
   return 0;
 }
 
+// 扫描目录
 int scanDir(const char *dirpath, int (*filter)(const struct dirent *))
 {
   struct dirent** namelist = NULL;
@@ -52,6 +55,7 @@ int scanDir(const char *dirpath, int (*filter)(const struct dirent *))
 
 Timestamp g_startTime = Timestamp::now();
 // assume those won't change during the life time of a process.
+// 假设 始终ticks 页大小 在程序运行期间不会改变
 int g_clockTicks = static_cast<int>(::sysconf(_SC_CLK_TCK));
 int g_pageSize = static_cast<int>(::sysconf(_SC_PAGE_SIZE));
 }  // namespace detail
@@ -72,11 +76,13 @@ string ProcessInfo::pidString()
   return buf;
 }
 
+// real user id
 uid_t ProcessInfo::uid()
 {
   return ::getuid();
 }
 
+// 通过 uid 获得 user name
 string ProcessInfo::username()
 {
   struct passwd pwd;
@@ -84,6 +90,7 @@ string ProcessInfo::username()
   char buf[8192];
   const char* name = "unknownuser";
 
+  // 通过 uid 获得执行该程序的用户的信息
   getpwuid_r(uid(), &pwd, buf, sizeof buf, &result);
   if (result)
   {
@@ -112,6 +119,7 @@ int ProcessInfo::pageSize()
   return g_pageSize;
 }
 
+// 判断是否是 debug 模式运行
 bool ProcessInfo::isDebugBuild()
 {
 #ifdef NDEBUG
@@ -144,6 +152,7 @@ string ProcessInfo::procname()
 
 StringPiece ProcessInfo::procname(const string& stat)
 {
+  // 进程名称 在 （name） 之间
   StringPiece name;
   size_t lp = stat.find('(');
   size_t rp = stat.rfind(')');
@@ -189,13 +198,16 @@ string ProcessInfo::exePath()
   return result;
 }
 
+// 获得该程序打开的 fd 个数
 int ProcessInfo::openedFiles()
 {
   t_numOpenedFiles = 0;
+  // fdDirFilter 是一个  函数指针
   scanDir("/proc/self/fd", fdDirFilter);
   return t_numOpenedFiles;
 }
 
+// 获得最大可打开的 文件描述符个数
 int ProcessInfo::maxOpenFiles()
 {
   struct rlimit rl;
@@ -222,6 +234,7 @@ ProcessInfo::CpuTime ProcessInfo::cpuTime()
   return t;
 }
 
+// 获得该程序打开的 线程数量
 int ProcessInfo::numThreads()
 {
   int result = 0;
@@ -234,6 +247,7 @@ int ProcessInfo::numThreads()
   return result;
 }
 
+// 获得 线程 vector
 std::vector<pid_t> ProcessInfo::threads()
 {
   std::vector<pid_t> result;

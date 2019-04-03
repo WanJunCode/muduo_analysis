@@ -4,6 +4,7 @@
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 
 #include "muduo/base/TimeZone.h"
+
 #include "muduo/base/noncopyable.h"
 #include "muduo/base/Date.h"
 
@@ -38,7 +39,7 @@ struct Transition
 
 struct Comp
 {
-  bool compareGmt;
+  bool compareGmt;  // shi fou bijiao gmt
 
   Comp(bool gmt)
     : compareGmt(gmt)
@@ -150,6 +151,7 @@ class File : noncopyable
   FILE* fp_;
 };
 
+// read from zonefile and store in data
 bool readTimeZoneFile(const char* zonefile, struct TimeZone::Data* data)
 {
   File f(zonefile);

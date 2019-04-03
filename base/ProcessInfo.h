@@ -1,3 +1,5 @@
+// check 进程信息，通过 打开 /proc/self/ 获得相应的信息
+
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 
