@@ -58,10 +58,10 @@ Logger::LogLevel initLogLevel()
     return Logger::INFO;
 }
 
-// 初始化 日志等级
+// 定义 初始化 日志等级
 Logger::LogLevel g_logLevel = initLogLevel();
 
-// 日志等级 对应的 字符串
+// 日志等级 对应的 字符串，用于将日志等级转化为字符串
 const char *LogLevelName[Logger::NUM_LOG_LEVELS] =
     {
         "TRACE ",

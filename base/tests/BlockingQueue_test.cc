@@ -43,6 +43,7 @@ class Test
 
   void joinAll()
   {
+    // 向queue中存入 stop
     for (size_t i = 0; i < threads_.size(); ++i)
     {
       queue_.put("stop");
@@ -81,6 +82,7 @@ class Test
   std::vector<std::unique_ptr<muduo::Thread>> threads_;
 };
 
+// 测试 queue 中使用 unique_ptr 的情况
 void testMove()
 {
   muduo::BlockingQueue<std::unique_ptr<int>> queue;

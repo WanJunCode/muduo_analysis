@@ -16,6 +16,7 @@ namespace muduo
 
 class TimeZone;
 
+// 日志宏使用类
 class Logger
 {
 public:

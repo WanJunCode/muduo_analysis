@@ -6,6 +6,9 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+// logger 内部使用 logstream
+// logger 通过设置回调函数 绑定 AsyncLogging（写入磁盘中）
+
 // 500 m
 off_t kRollSize = 500*1000*1000;
 
@@ -16,8 +19,11 @@ void asyncOutput(const char* msg, int len)
   g_asyncLog->append(msg, len);
 }
 
+// longLog 控制是否输出 长日志
 void bench(bool longLog)
 {
+  // Logger -> asyncOutput 表示宏中Logger的输出被传输给asyncOutput
+  // 通过设置回调函数绑定
   muduo::Logger::setOutput(asyncOutput);
 
   int cnt = 0;
@@ -31,6 +37,7 @@ void bench(bool longLog)
     muduo::Timestamp start = muduo::Timestamp::now();
     for (int i = 0; i < kBatch; ++i)
     {
+      // muduo::Logger 调用
       LOG_INFO << "Hello 0123456789" << " abcdefghijklmnopqrstuvwxyz "
                << (longLog ? longStr : empty)
                << cnt;
