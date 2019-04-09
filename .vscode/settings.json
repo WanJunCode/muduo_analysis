@@ -5,6 +5,11 @@
         "ostream": "cpp",
         "system_error": "cpp",
         "type_traits": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "condition_variable": "cpp"
     }
 }

@@ -1,4 +1,4 @@
-// check 倒计时
+// check 倒计时，用于等待某个操作完成；比如等待线程开始，在主线程 wait，在新线程完成后 countDown
 
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
@@ -21,9 +21,9 @@ class CountDownLatch : noncopyable
 
   explicit CountDownLatch(int count);
 
-  void wait();
+  void wait();        // 等待 count 为 0 
 
-  void countDown();
+  void countDown();   // 减少 count 值
 
   int getCount() const;
 

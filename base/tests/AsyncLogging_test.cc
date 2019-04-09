@@ -6,6 +6,7 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+// 500 m
 off_t kRollSize = 500*1000*1000;
 
 muduo::AsyncLogging* g_asyncLog = NULL;
@@ -45,7 +46,7 @@ void bench(bool longLog)
 int main(int argc, char* argv[])
 {
   {
-    // set max virtual memory to 2GB.
+    // set max virtual memory to 2GB. 设置最大的虚拟内存为 2GB
     size_t kOneGB = 1000*1024*1024;
     rlimit rl = { 2*kOneGB, 2*kOneGB };
     setrlimit(RLIMIT_AS, &rl);
