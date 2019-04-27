@@ -228,6 +228,7 @@ void sockets::toIp(char* buf, size_t size,
   }
 }
 
+// 解析 ip port 到 addr
 void sockets::fromIpPort(const char* ip, uint16_t port,
                          struct sockaddr_in* addr)
 {

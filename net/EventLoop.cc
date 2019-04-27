@@ -145,8 +145,10 @@ void EventLoop::quit()
   }
 }
 
+// 
 void EventLoop::runInLoop(Functor cb)
 {
+  // 确保在当前线程
   if (isInLoopThread())
   {
     cb();

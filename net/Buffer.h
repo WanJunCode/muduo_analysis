@@ -1,3 +1,5 @@
+// check 缓冲区 每个 channel 都有两个缓冲区，输入输出缓冲区 
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -29,6 +31,7 @@ namespace muduo
 namespace net
 {
 
+/// http://www.cnblogs.com/Solstice/archive/2011/04/17/2018801.html 参考链接
 /// A buffer class modeled after org.jboss.netty.buffer.ChannelBuffer
 ///
 /// @code
@@ -39,6 +42,12 @@ namespace net
 /// |                   |                  |                  |
 /// 0      <=      readerIndex   <=   writerIndex    <=     size
 /// @endcode
+
+/// 比方说，程序以固定的4个字节表示消息的长度（即《Muduo 网络编程示例之二：Boost.Asio 的聊天服务器》中的 
+/// LengthHeaderCodec），我要序列化一个消息，但是不知道它有多长，那么我可以一直 append() 直到序列化
+/// 完成（图 17，写入了 200 字节），然后再在序列化数据的前面添加消息的长度（图 18，把 200 这个数 
+/// prepend 到首部）。
+
 class Buffer : public muduo::copyable
 {
  public:
@@ -60,23 +69,29 @@ class Buffer : public muduo::copyable
 
   void swap(Buffer& rhs)
   {
+    // vector of char
     buffer_.swap(rhs.buffer_);
     std::swap(readerIndex_, rhs.readerIndex_);
     std::swap(writerIndex_, rhs.writerIndex_);
   }
 
+  // 可读的长度
   size_t readableBytes() const
   { return writerIndex_ - readerIndex_; }
 
+  // 可写的长度
   size_t writableBytes() const
   { return buffer_.size() - writerIndex_; }
 
+  // 之前准备的长度
   size_t prependableBytes() const
   { return readerIndex_; }
 
+  // 获得数据开头位置
   const char* peek() const
   { return begin() + readerIndex_; }
 
+  // 从可读数据中读取 换行符
   const char* findCRLF() const
   {
     // FIXME: replace with memmem()?
@@ -95,6 +110,7 @@ class Buffer : public muduo::copyable
 
   const char* findEOL() const
   {
+    // 从 buf 所指内存区域的前count个字节查找字符 ch
     const void* eol = memchr(peek(), '\n', readableBytes());
     return static_cast<const char*>(eol);
   }
@@ -110,6 +126,7 @@ class Buffer : public muduo::copyable
   // retrieve returns void, to prevent
   // string str(retrieve(readableBytes()), readableBytes());
   // the evaluation of two functions are unspecified
+  // 读取缓冲区中的数据，读取长度可以设置。 如果没有设置长度则读取所有缓冲区的数据
   void retrieve(size_t len)
   {
     assert(len <= readableBytes());
@@ -119,10 +136,12 @@ class Buffer : public muduo::copyable
     }
     else
     {
+      // len <= 0 获得所有
       retrieveAll();
     }
   }
 
+  // 获得 
   void retrieveUntil(const char* end)
   {
     assert(peek() <= end);
@@ -130,6 +149,7 @@ class Buffer : public muduo::copyable
     retrieve(end - peek());
   }
 
+  // 获取 64位长度的数据
   void retrieveInt64()
   {
     retrieve(sizeof(int64_t));
@@ -150,12 +170,14 @@ class Buffer : public muduo::copyable
     retrieve(sizeof(int8_t));
   }
 
+  // 获取全部，之后 readerIndex_ / writerIndex_ 复位
   void retrieveAll()
   {
     readerIndex_ = kCheapPrepend;
     writerIndex_ = kCheapPrepend;
   }
 
+  // 读取所有的数据 作为 string
   string retrieveAllAsString()
   {
     return retrieveAsString(readableBytes());
@@ -164,6 +186,7 @@ class Buffer : public muduo::copyable
   string retrieveAsString(size_t len)
   {
     assert(len <= readableBytes());
+    // string (const char * , size_t len)
     string result(peek(), len);
     retrieve(len);
     return result;
@@ -179,8 +202,10 @@ class Buffer : public muduo::copyable
     append(str.data(), str.size());
   }
 
+  // 添加 到末尾
   void append(const char* /*restrict*/ data, size_t len)
   {
+    // 确保当前不能写入长度为len的数据，
     ensureWritableBytes(len);
     std::copy(data, data+len, beginWrite());
     hasWritten(len);
@@ -191,8 +216,10 @@ class Buffer : public muduo::copyable
     append(static_cast<const char*>(data), len);
   }
 
+  // 确认可写入的数据长度 大于 len
   void ensureWritableBytes(size_t len)
   {
+    // 如果可写入的数据长度小于 len
     if (writableBytes() < len)
     {
       makeSpace(len);
@@ -212,6 +239,7 @@ class Buffer : public muduo::copyable
     writerIndex_ += len;
   }
 
+  // 将可写索引后退 len 长度
   void unwrite(size_t len)
   {
     assert(len <= readableBytes());
@@ -223,6 +251,7 @@ class Buffer : public muduo::copyable
   ///
   void appendInt64(int64_t x)
   {
+    // 主机数据转为网络数据
     int64_t be64 = sockets::hostToNetwork64(x);
     append(&be64, sizeof be64);
   }
@@ -356,18 +385,22 @@ class Buffer : public muduo::copyable
     assert(len <= prependableBytes());
     readerIndex_ -= len;
     const char* d = static_cast<const char*>(data);
+    // 将 d 开始的 len 长度 数据，复制到 begin() 开始的读取索引中
     std::copy(d, d+len, begin()+readerIndex_);
   }
 
+  // 收缩 缓冲区
   void shrink(size_t reserve)
   {
     // FIXME: use vector::shrink_to_fit() in C++ 11 if possible.
     Buffer other;
     other.ensureWritableBytes(readableBytes()+reserve);
+    // StringPiece ==》 const void* /*restrict*/ data, size_t len
     other.append(toStringPiece());
     swap(other);
   }
 
+  // 返回内部 vector 的容量
   size_t internalCapacity() const
   {
     return buffer_.capacity();
@@ -387,6 +420,7 @@ class Buffer : public muduo::copyable
   const char* begin() const
   { return &*buffer_.begin(); }
 
+  // 创造空间
   void makeSpace(size_t len)
   {
     if (writableBytes() + prependableBytes() < len + kCheapPrepend)
@@ -396,6 +430,7 @@ class Buffer : public muduo::copyable
     }
     else
     {
+      // 将可读数据移动到前端
       // move readable data to the front, make space inside buffer
       assert(kCheapPrepend < readerIndex_);
       size_t readable = readableBytes();
@@ -409,10 +444,11 @@ class Buffer : public muduo::copyable
   }
 
  private:
-  std::vector<char> buffer_;
-  size_t readerIndex_;
+  std::vector<char> buffer_;        // vecotr 结合 char 构成 buffer 缓冲区
+  size_t readerIndex_;              // 读取 索引
   size_t writerIndex_;
 
+  // 类静态数据 用于判断换行字符串
   static const char kCRLF[];
 };
 

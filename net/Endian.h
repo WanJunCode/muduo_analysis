@@ -1,3 +1,5 @@
+// 系统的大小端转换 主机地址 《--》 网络地址
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -26,6 +28,8 @@ namespace sockets
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+
+// 主机地址 到 网络地址
 inline uint64_t hostToNetwork64(uint64_t host64)
 {
   return htobe64(host64);
@@ -41,6 +45,7 @@ inline uint16_t hostToNetwork16(uint16_t host16)
   return htobe16(host16);
 }
 
+// 网络地址 到 主机地址
 inline uint64_t networkToHost64(uint64_t net64)
 {
   return be64toh(net64);

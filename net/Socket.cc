@@ -84,9 +84,12 @@ void Socket::shutdownWrite()
   sockets::shutdownWrite(sockfd_);
 }
 
+
+// 使用 setsockopt 设置 fd 的属性
 void Socket::setTcpNoDelay(bool on)
 {
   int optval = on ? 1 : 0;
+  // 设置 tcp 协议层 无延迟
   ::setsockopt(sockfd_, IPPROTO_TCP, TCP_NODELAY,
                &optval, static_cast<socklen_t>(sizeof optval));
   // FIXME CHECK
@@ -95,15 +98,19 @@ void Socket::setTcpNoDelay(bool on)
 void Socket::setReuseAddr(bool on)
 {
   int optval = on ? 1 : 0;
+  // 设置 socket 层 地址重用
   ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR,
                &optval, static_cast<socklen_t>(sizeof optval));
   // FIXME CHECK
 }
 
+// 设置是否重用端口
 void Socket::setReusePort(bool on)
 {
+  // 判断能否使用端口重用
 #ifdef SO_REUSEPORT
   int optval = on ? 1 : 0;
+  // 设置 socket 层 端口重用
   int ret = ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEPORT,
                          &optval, static_cast<socklen_t>(sizeof optval));
   if (ret < 0 && on)
@@ -121,6 +128,7 @@ void Socket::setReusePort(bool on)
 void Socket::setKeepAlive(bool on)
 {
   int optval = on ? 1 : 0;
+  // 设置 socket 层的 心跳机制
   ::setsockopt(sockfd_, SOL_SOCKET, SO_KEEPALIVE,
                &optval, static_cast<socklen_t>(sizeof optval));
   // FIXME CHECK

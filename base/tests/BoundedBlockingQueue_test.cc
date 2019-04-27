@@ -18,6 +18,7 @@ class Test
     threads_.reserve(numThreads);
     for (int i = 0; i < numThreads; ++i)
     {
+      // 创建线程 并且给线程赋值名称
       char name[32];
       snprintf(name, sizeof name, "work thread %d", i);
       threads_.emplace_back(new muduo::Thread(
@@ -78,13 +79,14 @@ class Test
            muduo::CurrentThread::name());
   }
 
-  muduo::BoundedBlockingQueue<std::string> queue_;
+  muduo::BoundedBlockingQueue<std::string> queue_;        // 有个数限制的 队列
   muduo::CountDownLatch latch_;
   std::vector<std::unique_ptr<muduo::Thread>> threads_;
 };
 
 void testMove()
 {
+  // boost版本
 #if BOOST_VERSION >= 105500L
   muduo::BoundedBlockingQueue<std::unique_ptr<int>> queue(10);
   queue.put(std::unique_ptr<int>(new int(42)));

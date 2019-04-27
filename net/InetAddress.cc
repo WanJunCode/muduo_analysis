@@ -18,6 +18,7 @@
 // INADDR_ANY use (type)value casting.
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 static const in_addr_t kInaddrAny = INADDR_ANY;
+// 0x 7f 00 00 01 == 127.0.0.1
 static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;
 #pragma GCC diagnostic error "-Wold-style-cast"
 
@@ -45,6 +46,7 @@ static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;
 using namespace muduo;
 using namespace muduo::net;
 
+// 静态断言，确认 sockaddr_in 和 sockaddr_in6 相同
 static_assert(sizeof(InetAddress) == sizeof(struct sockaddr_in6),
               "InetAddress is same size as sockaddr_in6");
 static_assert(offsetof(sockaddr_in, sin_family) == 0, "sin_family offset 0");
@@ -52,6 +54,7 @@ static_assert(offsetof(sockaddr_in6, sin6_family) == 0, "sin6_family offset 0");
 static_assert(offsetof(sockaddr_in, sin_port) == 2, "sin_port offset 2");
 static_assert(offsetof(sockaddr_in6, sin6_port) == 2, "sin6_port offset 2");
 
+// loopbackOnly 也就是绑定地址LOOPBAC, 往往是127.0.0.1, 只能收到127.0.0.1上面的连接请求
 InetAddress::InetAddress(uint16_t port, bool loopbackOnly, bool ipv6)
 {
   static_assert(offsetof(InetAddress, addr6_) == 0, "addr6_ offset 0");
@@ -92,6 +95,7 @@ string InetAddress::toIpPort() const
 {
   char buf[64] = "";
   sockets::toIpPort(buf, sizeof buf, getSockAddr());
+  // char[] ==> std::string
   return buf;
 }
 
@@ -110,19 +114,24 @@ uint32_t InetAddress::ipNetEndian() const
 
 uint16_t InetAddress::toPort() const
 {
+  // 网络地址转为主机地址 16位
   return sockets::networkToHost16(portNetEndian());
 }
 
+// 静态线程变量
 static __thread char t_resolveBuffer[64 * 1024];
 
+// 解析 服务器名称
 bool InetAddress::resolve(StringArg hostname, InetAddress* out)
 {
   assert(out != NULL);
+  // hostent是C语言标准库函数gethostbyname的返回值
   struct hostent hent;
   struct hostent* he = NULL;
   int herrno = 0;
   memZero(&hent, sizeof(hent));
 
+  // gethostbyname 不可重入，线程不安全； gethostbyname_r 可重入
   int ret = gethostbyname_r(hostname.c_str(), &hent, t_resolveBuffer, sizeof t_resolveBuffer, &he, &herrno);
   if (ret == 0 && he != NULL)
   {
@@ -144,6 +153,7 @@ void InetAddress::setScopeId(uint32_t scope_id)
 {
   if (family() == AF_INET6)
   {
+    /* IPv6 scope-id */
     addr6_.sin6_scope_id = scope_id;
   }
 }

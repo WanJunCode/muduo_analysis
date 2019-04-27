@@ -17,6 +17,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// 初始化事件类型的初始值
 const int Channel::kNoneEvent = 0;
 const int Channel::kReadEvent = POLLIN | POLLPRI;
 const int Channel::kWriteEvent = POLLOUT;
@@ -40,22 +41,26 @@ Channel::~Channel()
   assert(!addedToLoop_);
   if (loop_->isInLoopThread())
   {
+    // 确定 loop 已经没有当前 channel
     assert(!loop_->hasChannel(this));
   }
 }
 
 void Channel::tie(const std::shared_ptr<void>& obj)
 {
+  // shared_ptr ==> unique_ptr
   tie_ = obj;
   tied_ = true;
 }
 
+// 调用 loop 更新 channel
 void Channel::update()
 {
   addedToLoop_ = true;
   loop_->updateChannel(this);
 }
 
+// 调用 loop 删除 channel
 void Channel::remove()
 {
   assert(isNoneEvent());
@@ -65,9 +70,11 @@ void Channel::remove()
 
 void Channel::handleEvent(Timestamp receiveTime)
 {
+  // ?????????
   std::shared_ptr<void> guard;
   if (tied_)
   {
+    // 如果绑定了 loop ， 获取 loop 的 lock（mutex）
     guard = tie_.lock();
     if (guard)
     {
@@ -80,10 +87,12 @@ void Channel::handleEvent(Timestamp receiveTime)
   }
 }
 
+// 在 guard 的情况下 处理 事件
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
   eventHandling_ = true;
   LOG_TRACE << reventsToString();
+  // 关闭事件 && 没有读取事件
   if ((revents_ & POLLHUP) && !(revents_ & POLLIN))
   {
     if (logHup_)
@@ -93,19 +102,26 @@ void Channel::handleEventWithGuard(Timestamp receiveTime)
     if (closeCallback_) closeCallback_();
   }
 
+  // 无效的 poll 请求
   if (revents_ & POLLNVAL)
   {
     LOG_WARN << "fd = " << fd_ << " Channel::handle_event() POLLNVAL";
   }
 
+  // 错误事件
   if (revents_ & (POLLERR | POLLNVAL))
   {
     if (errorCallback_) errorCallback_();
   }
+
+  // 读取事件
   if (revents_ & (POLLIN | POLLPRI | POLLRDHUP))
   {
+    // 读取回调函数处理
     if (readCallback_) readCallback_(receiveTime);
   }
+
+  // 写入事件
   if (revents_ & POLLOUT)
   {
     if (writeCallback_) writeCallback_();

@@ -16,10 +16,10 @@ namespace muduo
 
 class GzipFile : noncopyable
 {
- public:
-//  右值引用 copy 构造函数
-  GzipFile(GzipFile&& rhs) noexcept
-    : file_(rhs.file_)
+public:
+  //  右值引用 copy 构造函数
+  GzipFile(GzipFile &&rhs) noexcept
+      : file_(rhs.file_)
   {
     rhs.file_ = NULL;
   }
@@ -33,14 +33,14 @@ class GzipFile : noncopyable
   }
 
   // 右值引用 赋值构造函数
-  GzipFile& operator=(GzipFile&& rhs) noexcept
+  GzipFile &operator=(GzipFile &&rhs) noexcept
   {
     swap(rhs);
     return *this;
   }
 
   bool valid() const { return file_ != NULL; }
-  void swap(GzipFile& rhs) { std::swap(file_, rhs.file_); }
+  void swap(GzipFile &rhs) { std::swap(file_, rhs.file_); }
 
 #if ZLIB_VERNUM >= 0x1240
   // 设置 缓冲区
@@ -48,7 +48,7 @@ class GzipFile : noncopyable
 #endif
 
   // return the number of uncompressed bytes actually read, 0 for eof, -1 for error
-  int read(void* buf, int len) { return ::gzread(file_, buf, len); }
+  int read(void *buf, int len) { return ::gzread(file_, buf, len); }
 
   // return the number of uncompressed bytes actually written
   int write(StringPiece buf) { return ::gzwrite(file_, buf.data(), buf.size()); }
@@ -73,6 +73,7 @@ class GzipFile : noncopyable
     return GzipFile(::gzopen(filename.c_str(), "abe"));
   }
 
+  // 专有读取方式打开
   static GzipFile openForWriteExclusive(StringArg filename)
   {
     return GzipFile(::gzopen(filename.c_str(), "wbxe"));
@@ -83,13 +84,13 @@ class GzipFile : noncopyable
     return GzipFile(::gzopen(filename.c_str(), "wbe"));
   }
 
- private:
+private:
   explicit GzipFile(gzFile file)
-    : file_(file)
+      : file_(file)
   {
   }
 
   gzFile file_;
 };
 
-}  // namespace muduo
+} // namespace muduo

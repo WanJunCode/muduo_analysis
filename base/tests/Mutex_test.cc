@@ -11,12 +11,14 @@ using namespace std;
 
 MutexLock g_mutex;
 vector<int> g_vec;
+// 一百万次操作
 const int kCount = 10*1000*1000;
 
 void threadFunc()
 {
   for (int i = 0; i < kCount; ++i)
   {
+    // 进行多次的上锁操作 并将 i push 进 vector 容器中
     MutexLockGuard lock(g_mutex);
     g_vec.push_back(i);
   }
@@ -30,6 +32,7 @@ int foo()
   MutexLockGuard lock(g_mutex);
   if (!g_mutex.isLockedByThisThread())
   {
+    // 判断是否成功获得锁 并判断是否是当前线程获得锁
     printf("FAIL\n");
     return -1;
   }

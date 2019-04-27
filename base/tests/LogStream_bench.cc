@@ -8,6 +8,7 @@
 
 using namespace muduo;
 
+// 一百万
 const size_t N = 1000000;
 
 #pragma GCC diagnostic ignored "-Wold-style-cast"

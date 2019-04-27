@@ -22,9 +22,10 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// InetAddress 是 网络ip 地址的一个封装
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
   : loop_(loop),
-    acceptSocket_(sockets::createNonblockingOrDie(listenAddr.family())),
+    acceptSocket_(sockets::createNonblockingOrDie(listenAddr.family())),    // 创建监听fd
     acceptChannel_(loop, acceptSocket_.fd()),
     listenning_(false),
     idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
@@ -33,13 +34,16 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusepor
   acceptSocket_.setReuseAddr(true);
   acceptSocket_.setReusePort(reuseport);
   acceptSocket_.bindAddress(listenAddr);
+  // 设置 监听socket 的读取回调函数
   acceptChannel_.setReadCallback(
       std::bind(&Acceptor::handleRead, this));
 }
 
 Acceptor::~Acceptor()
 {
+  // 关闭 事件处理函数
   acceptChannel_.disableAll();
+  // 从关联的 loop 删除
   acceptChannel_.remove();
   ::close(idleFd_);
 }
@@ -49,9 +53,11 @@ void Acceptor::listen()
   loop_->assertInLoopThread();
   listenning_ = true;
   acceptSocket_.listen();
+  // 开启读取事件
   acceptChannel_.enableReading();
 }
 
+// 新连接处理
 void Acceptor::handleRead()
 {
   loop_->assertInLoopThread();
@@ -64,6 +70,7 @@ void Acceptor::handleRead()
     // LOG_TRACE << "Accepts of " << hostport;
     if (newConnectionCallback_)
     {
+      // 新连接回调函数
       newConnectionCallback_(connfd, peerAddr);
     }
     else

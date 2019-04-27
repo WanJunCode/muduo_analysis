@@ -1,3 +1,5 @@
+// check 接收器，监听指定的端口，建立和客户端的连接
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -30,6 +32,7 @@ class InetAddress;
 class Acceptor : noncopyable
 {
  public:
+  // 声明 新连接回调函数
   typedef std::function<void (int sockfd, const InetAddress&)> NewConnectionCallback;
 
   Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport);
@@ -44,12 +47,12 @@ class Acceptor : noncopyable
  private:
   void handleRead();
 
-  EventLoop* loop_;
-  Socket acceptSocket_;
-  Channel acceptChannel_;
-  NewConnectionCallback newConnectionCallback_;
-  bool listenning_;
-  int idleFd_;
+  EventLoop* loop_;             // 绑定的 loop
+  Socket acceptSocket_;         // 监听 socket
+  Channel acceptChannel_;       // 监听 socket 的 channel 处理函数
+  NewConnectionCallback newConnectionCallback_;   // 新连接 回调函数，在 handleRead 中执行
+  bool listenning_;             // 是否正在监听
+  int idleFd_;                  // 空闲 fd
 };
 
 }  // namespace net

@@ -72,6 +72,7 @@ void PollPoller::fillActiveChannels(int numEvents,
   }
 }
 
+// 更新 channel 状态
 void PollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
@@ -88,6 +89,7 @@ void PollPoller::updateChannel(Channel* channel)
     int idx = static_cast<int>(pollfds_.size())-1;
     channel->set_index(idx);
     channels_[pfd.fd] = channel;
+    // 添加一个新的 channel
   }
   else
   {
@@ -109,6 +111,7 @@ void PollPoller::updateChannel(Channel* channel)
   }
 }
 
+// vector 中的删除操作，都是将 元素 转移到 back 尾部，使用 pop_back 删除
 void PollPoller::removeChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
@@ -124,6 +127,7 @@ void PollPoller::removeChannel(Channel* channel)
   assert(n == 1); (void)n;
   if (implicit_cast<size_t>(idx) == pollfds_.size()-1)
   {
+    // 如果在 vector 尾部，直接使用 pop_back
     pollfds_.pop_back();
   }
   else

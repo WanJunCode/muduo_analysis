@@ -1,3 +1,5 @@
+// 对 ip address 的封装
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -22,6 +24,7 @@ namespace net
 {
 namespace sockets
 {
+  // 将 ipv6 转换
 const struct sockaddr* sockaddr_cast(const struct sockaddr_in6* addr);
 }
 
@@ -50,6 +53,7 @@ class InetAddress : public muduo::copyable
     : addr6_(addr)
   { }
 
+  // 返回 协议族
   sa_family_t family() const { return addr_.sin_family; }
   string toIp() const;
   string toIpPort() const;
@@ -63,6 +67,7 @@ class InetAddress : public muduo::copyable
   uint32_t ipNetEndian() const;
   uint16_t portNetEndian() const { return addr_.sin_port; }
 
+  // 将主机名 解析为 ip 地址
   // resolve hostname to IP address, not changing port or sin_family
   // return true on success.
   // thread safe
@@ -73,12 +78,26 @@ class InetAddress : public muduo::copyable
   void setScopeId(uint32_t scope_id);
 
  private:
+  // 联合体 sockaddr_in 、 sockaddr_in6
   union
   {
     struct sockaddr_in addr_;
     struct sockaddr_in6 addr6_;
   };
 };
+
+
+// struct sockaddr_in
+//   {
+//     __SOCKADDR_COMMON (sin_);
+//     in_port_t sin_port;			/* Port number.  */         端口号
+//     struct in_addr sin_addr;		/* Internet address.  */  地址
+//     /* Pad to size of `struct sockaddr'.  */
+//     unsigned char sin_zero[sizeof (struct sockaddr) -
+// 			   __SOCKADDR_COMMON_SIZE -
+// 			   sizeof (in_port_t) -
+// 			   sizeof (struct in_addr)];
+//   };
 
 }  // namespace net
 }  // namespace muduo

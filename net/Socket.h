@@ -1,3 +1,5 @@
+// check 对底层 socket 的封装
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -26,7 +28,7 @@ namespace net
 
 class InetAddress;
 
-///
+/// 对 socket 文件描述符的封装，当析构函数时关闭
 /// Wrapper of socket file descriptor.
 ///
 /// It closes the sockfd when desctructs.
@@ -55,6 +57,8 @@ class Socket : noncopyable
   /// a descriptor for the accepted socket, which has been
   /// set to non-blocking and close-on-exec. *peeraddr is assigned.
   /// On error, -1 is returned, and *peeraddr is untouched.
+  /// 如果接受成功，返回非负数（文件描述符），并且参数 peeraddr 被赋值
+  /// 文件描述符 ： 非阻塞，exec后自动关闭
   int accept(InetAddress* peeraddr);
 
   void shutdownWrite();

@@ -40,6 +40,7 @@ void ThreadPool::start(int numThreads)
   {
     char id[32];
     snprintf(id, sizeof id, "%d", i+1);
+    // 绑定 pool 的 runInThread 函数
     threads_.emplace_back(new muduo::Thread(
           std::bind(&ThreadPool::runInThread, this), name_+id));
     threads_[i]->start();
@@ -54,9 +55,9 @@ void ThreadPool::start(int numThreads)
 void ThreadPool::stop()
 {
   {
-  MutexLockGuard lock(mutex_);
-  running_ = false;
-  notEmpty_.notifyAll();
+    MutexLockGuard lock(mutex_);
+    running_ = false;
+    notEmpty_.notifyAll();
   }
   for (auto& thr : threads_)
   {
@@ -73,7 +74,7 @@ size_t ThreadPool::queueSize() const
 // 存入新的任务
 void ThreadPool::run(Task task)
 {
-  // 如果是单线程，直接运行 task
+  // 如果是单线程(子线程容器为空)，直接运行 task
   if (threads_.empty())
   {
     task();
@@ -84,13 +85,13 @@ void ThreadPool::run(Task task)
     // 在工作线程都满的情况 等待
     while (isFull())
     {
-      notFull_.wait();
+      notFull_.wait();  // 等待未满的条件
     }
     assert(!isFull());
 
     // 将 task 添加到任务队列中，提醒工作线程去执行
     queue_.push_back(std::move(task));
-    notEmpty_.notify();
+    notEmpty_.notify(); // 提示未空，有新的任务添加了
   }
 }
 

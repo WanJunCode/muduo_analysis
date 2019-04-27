@@ -19,6 +19,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// 在头文件中已经定义 静态类常量
 const int Connector::kMaxRetryDelayMs;
 
 Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
@@ -26,8 +27,9 @@ Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
     serverAddr_(serverAddr),
     connect_(false),
     state_(kDisconnected),
-    retryDelayMs_(kInitRetryDelayMs)
+    retryDelayMs_(kInitRetryDelayMs)      // 重传延时为 500 毫秒
 {
+  // 初始化状态为 未连接
   LOG_DEBUG << "ctor[" << this << "]";
 }
 
@@ -37,17 +39,20 @@ Connector::~Connector()
   assert(!channel_);
 }
 
+// 开启连接
 void Connector::start()
 {
   connect_ = true;
+  // std::function<void()>
   loop_->runInLoop(std::bind(&Connector::startInLoop, this)); // FIXME: unsafe
 }
 
+// void()
 void Connector::startInLoop()
 {
   loop_->assertInLoopThread();
   assert(state_ == kDisconnected);
-  if (connect_)
+  if (connect_) // 再次确认当前的状态，在start函数中会设置为true
   {
     connect();
   }
@@ -57,6 +62,7 @@ void Connector::startInLoop()
   }
 }
 
+// 关闭连接
 void Connector::stop()
 {
   connect_ = false;
@@ -77,7 +83,9 @@ void Connector::stopInLoop()
 
 void Connector::connect()
 {
+  // 创建一个non_blocking的非阻塞socket
   int sockfd = sockets::createNonblockingOrDie(serverAddr_.family());
+  // 连接到目标地址
   int ret = sockets::connect(sockfd, serverAddr_.getSockAddr());
   int savedErrno = (ret == 0) ? 0 : errno;
   switch (savedErrno)
@@ -116,6 +124,7 @@ void Connector::connect()
   }
 }
 
+// 重启连接
 void Connector::restart()
 {
   loop_->assertInLoopThread();
@@ -130,6 +139,8 @@ void Connector::connecting(int sockfd)
   setState(kConnecting);
   assert(!channel_);
   channel_.reset(new Channel(loop_, sockfd));
+
+  // std::function<void()>
   channel_->setWriteCallback(
       std::bind(&Connector::handleWrite, this)); // FIXME: unsafe
   channel_->setErrorCallback(
@@ -140,6 +151,7 @@ void Connector::connecting(int sockfd)
   channel_->enableWriting();
 }
 
+// 删除并且重置 channel
 int Connector::removeAndResetChannel()
 {
   channel_->disableAll();
@@ -155,12 +167,14 @@ void Connector::resetChannel()
   channel_.reset();
 }
 
+// 处理写入
 void Connector::handleWrite()
 {
   LOG_TRACE << "Connector::handleWrite " << state_;
 
   if (state_ == kConnecting)
   {
+    // 处理写入事件时 状态必须为 正在连接中
     int sockfd = removeAndResetChannel();
     int err = sockets::getSocketError(sockfd);
     if (err)
@@ -206,6 +220,7 @@ void Connector::handleError()
   }
 }
 
+// 重新尝试 sockfd
 void Connector::retry(int sockfd)
 {
   sockets::close(sockfd);
@@ -214,8 +229,12 @@ void Connector::retry(int sockfd)
   {
     LOG_INFO << "Connector::retry - Retry connecting to " << serverAddr_.toIpPort()
              << " in " << retryDelayMs_ << " milliseconds. ";
+    
+    // shared_from_this 获得当前对象的共享智能指针
+    // loop 等待执行
     loop_->runAfter(retryDelayMs_/1000.0,
                     std::bind(&Connector::startInLoop, shared_from_this()));
+    // 设置下一次超时重传的间隔事件
     retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
   }
   else
@@ -223,4 +242,3 @@ void Connector::retry(int sockfd)
     LOG_DEBUG << "do not connect";
   }
 }
-

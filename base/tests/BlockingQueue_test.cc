@@ -1,3 +1,6 @@
+// check 简单测试了阻塞队列
+// testmove 中测试了queue中元素为 unique_ptr 的情况，使用 std::move 完成转移
+
 #include "muduo/base/BlockingQueue.h"
 #include "muduo/base/CountDownLatch.h"
 #include "muduo/base/Thread.h"

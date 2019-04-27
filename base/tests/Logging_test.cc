@@ -13,6 +13,8 @@ std::unique_ptr<muduo::LogFile> g_logFile;
 void dummyOutput(const char* msg, int len)
 {
   g_total += len;
+
+  // 写入 g_file 或 g_logFile
   if (g_file)
   {
     fwrite(msg, 1, len, g_file);
@@ -56,7 +58,9 @@ int main()
 {
   getppid(); // for ltrace and strace
 
+  // 创建一个线程池
   muduo::ThreadPool pool("pool");
+  // 设置线程数量为 5 
   pool.start(5);
   pool.run(logInThread);
   pool.run(logInThread);
@@ -80,6 +84,7 @@ int main()
   char buffer[64*1024];
 
   g_file = fopen("/dev/null", "w");
+  // 给文件 设置 缓冲区
   setbuffer(g_file, buffer, sizeof buffer);
   bench("/dev/null");
   fclose(g_file);
@@ -90,6 +95,7 @@ int main()
   fclose(g_file);
 
   g_file = NULL;
+  // unique_ptr reset 重置
   g_logFile.reset(new muduo::LogFile("test_log_st", 500*1000*1000, false));
   bench("test_log_st");
 
@@ -98,6 +104,8 @@ int main()
   g_logFile.reset();
 
   {
+    // 设置 logger 的时间
+  // stdout to FILE *
   g_file = stdout;
   sleep(1);
   muduo::TimeZone beijing(8*3600, "CST");
