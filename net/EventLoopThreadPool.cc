@@ -28,6 +28,7 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* baseLoop, const string& name
 EventLoopThreadPool::~EventLoopThreadPool()
 {
   // Don't delete loop, it's stack variable
+  // 不需要删除 loop，都是栈中的变量
 }
 
 void EventLoopThreadPool::start(const ThreadInitCallback& cb)
@@ -37,24 +38,29 @@ void EventLoopThreadPool::start(const ThreadInitCallback& cb)
 
   started_ = true;
 
+  // 线程数量
   for (int i = 0; i < numThreads_; ++i)
   {
     char buf[name_.size() + 32];
     snprintf(buf, sizeof buf, "%s%d", name_.c_str(), i);
     EventLoopThread* t = new EventLoopThread(cb, buf);
     threads_.push_back(std::unique_ptr<EventLoopThread>(t));
+    // EventLoopThread::startLoop() -> EventLoop*
     loops_.push_back(t->startLoop());
   }
   if (numThreads_ == 0 && cb)
   {
+    // 单线程
     cb(baseLoop_);
   }
 }
 
+// next_ 没有被保护，会不会有问题
 EventLoop* EventLoopThreadPool::getNextLoop()
 {
   baseLoop_->assertInLoopThread();
   assert(started_);
+  // 如果单线程，获得当前的主线程
   EventLoop* loop = baseLoop_;
 
   if (!loops_.empty())
@@ -70,6 +76,7 @@ EventLoop* EventLoopThreadPool::getNextLoop()
   return loop;
 }
 
+// 根据 哈希值确定 loop
 EventLoop* EventLoopThreadPool::getLoopForHash(size_t hashCode)
 {
   baseLoop_->assertInLoopThread();
@@ -82,12 +89,14 @@ EventLoop* EventLoopThreadPool::getLoopForHash(size_t hashCode)
   return loop;
 }
 
+// 返回所有获得的 loop
 std::vector<EventLoop*> EventLoopThreadPool::getAllLoops()
 {
   baseLoop_->assertInLoopThread();
   assert(started_);
   if (loops_.empty())
   {
+    // 单线程模式
     return std::vector<EventLoop*>(1, baseLoop_);
   }
   else

@@ -29,6 +29,7 @@ namespace detail
 
 int createTimerfd()
 {
+  // 创建一个 时间 fd
   int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
                                  TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerfd < 0)
@@ -38,6 +39,7 @@ int createTimerfd()
   return timerfd;
 }
 
+// 计算到现在的时间
 struct timespec howMuchTimeFromNow(Timestamp when)
 {
   int64_t microseconds = when.microSecondsSinceEpoch()
@@ -54,6 +56,7 @@ struct timespec howMuchTimeFromNow(Timestamp when)
   return ts;
 }
 
+// 读取时间fd 有多少数据（是否等于8）
 void readTimerfd(int timerfd, Timestamp now)
 {
   uint64_t howmany;
@@ -95,6 +98,7 @@ TimerQueue::TimerQueue(EventLoop* loop)
     timers_(),
     callingExpiredTimers_(false)
 {
+  // 设置读取回调函数
   timerfdChannel_.setReadCallback(
       std::bind(&TimerQueue::handleRead, this));
   // we are always reading the timerfd, we disarm it with timerfd_settime.
@@ -109,10 +113,12 @@ TimerQueue::~TimerQueue()
   // do not remove channel, since we're in EventLoop::dtor();
   for (const Entry& timer : timers_)
   {
+    // 删除 Timer
     delete timer.second;
   }
 }
 
+// 添加时间器
 TimerId TimerQueue::addTimer(TimerCallback cb,
                              Timestamp when,
                              double interval)
@@ -145,6 +151,7 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   loop_->assertInLoopThread();
   assert(timers_.size() == activeTimers_.size());
   ActiveTimer timer(timerId.timer_, timerId.sequence_);
+  // 判断要删除的时间器是否正在使用中
   ActiveTimerSet::iterator it = activeTimers_.find(timer);
   if (it != activeTimers_.end())
   {
@@ -166,6 +173,7 @@ void TimerQueue::handleRead()
   Timestamp now(Timestamp::now());
   readTimerfd(timerfd_, now);
 
+  // 获得已到期的所有时间器
   std::vector<Entry> expired = getExpired(now);
 
   callingExpiredTimers_ = true;
@@ -177,9 +185,11 @@ void TimerQueue::handleRead()
   }
   callingExpiredTimers_ = false;
 
+  // 重置已经处理过的时间器
   reset(expired, now);
 }
 
+// 获得所有到期的时间
 std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now)
 {
   assert(timers_.size() == activeTimers_.size());

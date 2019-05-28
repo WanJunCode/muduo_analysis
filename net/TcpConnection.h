@@ -56,6 +56,8 @@ class TcpConnection : noncopyable,
   const string& name() const { return name_; }
   const InetAddress& localAddress() const { return localAddr_; }
   const InetAddress& peerAddress() const { return peerAddr_; }
+
+  // 判断当前的状态
   bool connected() const { return state_ == kConnected; }
   bool disconnected() const { return state_ == kDisconnected; }
   // return true if success.
@@ -67,6 +69,8 @@ class TcpConnection : noncopyable,
   void send(const StringPiece& message);
   // void send(Buffer&& message); // C++11
   void send(Buffer* message);  // this one will swap data
+
+  // 非线程安全的操作，不可以在其他线程中调用该函数
   void shutdown(); // NOT thread safe, no simultaneous calling
   // void shutdownAndForceCloseAfter(double seconds); // NOT thread safe, no simultaneous calling
   void forceClose();
@@ -133,26 +137,36 @@ class TcpConnection : noncopyable,
 
   EventLoop* loop_;
   const string name_;
-  StateE state_;  // FIXME: use atomic variable
+  StateE state_;  // FIXME: use atomic variable 使用原子变量
   bool reading_;
+  
   // we don't expose those classes to client.
+  // 每个TcpConnection 都绑定唯一的 socket 和 channel
   std::unique_ptr<Socket> socket_;
   std::unique_ptr<Channel> channel_;
-  const InetAddress localAddr_;
-  const InetAddress peerAddr_;
-  ConnectionCallback connectionCallback_;
-  MessageCallback messageCallback_;
-  WriteCompleteCallback writeCompleteCallback_;
-  HighWaterMarkCallback highWaterMarkCallback_;
-  CloseCallback closeCallback_;
-  size_t highWaterMark_;
+
+  const InetAddress localAddr_;               // 本机地址
+  const InetAddress peerAddr_;                // 对端地址
+
+  // 回调函数
+  ConnectionCallback connectionCallback_;     // 新连接回调函数
+  MessageCallback messageCallback_;           // 信息回调函数
+  WriteCompleteCallback writeCompleteCallback_;   // 读取完成回调函数
+  HighWaterMarkCallback highWaterMarkCallback_;   // 高水位回调函数
+  CloseCallback closeCallback_;                   // 关闭回调函数
+  size_t highWaterMark_;                      // 高水位
+  // 输入输出 缓冲区
   Buffer inputBuffer_;
   Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
+
+  // 万能变量
   boost::any context_;
   // FIXME: creationTime_, lastReceiveTime_
   //        bytesReceived_, bytesSent_
 };
 
+
+// 共享智能指针 ， 放在类型定义后
 typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 
 }  // namespace net

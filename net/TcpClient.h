@@ -73,6 +73,8 @@ class TcpClient : noncopyable
   EventLoop* loop_;
   ConnectorPtr connector_; // avoid revealing Connector
   const string name_;
+
+  // 回调函数
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;

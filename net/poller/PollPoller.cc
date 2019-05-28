@@ -28,6 +28,7 @@ PollPoller::~PollPoller() = default;
 
 Timestamp PollPoller::poll(int timeoutMs, ChannelList* activeChannels)
 {
+  // 监听 vector 中的所有 poll fd
   // XXX pollfds_ shouldn't change
   int numEvents = ::poll(&*pollfds_.begin(), pollfds_.size(), timeoutMs);
   int savedErrno = errno;

@@ -32,9 +32,13 @@ void muduo::net::defaultMessageCallback(const TcpConnectionPtr&,
                                         Buffer* buf,
                                         Timestamp)
 {
+  // 处理
+
+  // 缓冲区复位
   buf->retrieveAll();
 }
 
+// 内部创建 socket channel
 TcpConnection::TcpConnection(EventLoop* loop,
                              const string& nameArg,
                              int sockfd,
@@ -48,7 +52,7 @@ TcpConnection::TcpConnection(EventLoop* loop,
     channel_(new Channel(loop, sockfd)),
     localAddr_(localAddr),
     peerAddr_(peerAddr),
-    highWaterMark_(64*1024*1024)
+    highWaterMark_(64*1024*1024)      // 64M
 {
   channel_->setReadCallback(
       std::bind(&TcpConnection::handleRead, this, _1));
@@ -60,6 +64,8 @@ TcpConnection::TcpConnection(EventLoop* loop,
       std::bind(&TcpConnection::handleError, this));
   LOG_DEBUG << "TcpConnection::ctor[" <<  name_ << "] at " << this
             << " fd=" << sockfd;
+  
+  // 开启心跳
   socket_->setKeepAlive(true);
 }
 
@@ -68,9 +74,10 @@ TcpConnection::~TcpConnection()
   LOG_DEBUG << "TcpConnection::dtor[" <<  name_ << "] at " << this
             << " fd=" << channel_->fd()
             << " state=" << stateToString();
-  assert(state_ == kDisconnected);
+  assert(state_ == kDisconnected);// 析构函数必定会先断开连接
 }
 
+// 获得 tcp 连接信息
 bool TcpConnection::getTcpInfo(struct tcp_info* tcpi) const
 {
   return socket_->getTcpInfo(tcpi);
@@ -81,42 +88,52 @@ string TcpConnection::getTcpInfoString() const
   char buf[1024];
   buf[0] = '\0';
   socket_->getTcpInfoString(buf, sizeof buf);
+  // char[] => string
   return buf;
 }
 
 void TcpConnection::send(const void* data, int len)
 {
+  // 调用下方函数
   send(StringPiece(static_cast<const char*>(data), len));
 }
 
+// 发送数据
 void TcpConnection::send(const StringPiece& message)
 {
   if (state_ == kConnected)
   {
     if (loop_->isInLoopThread())
     {
+      // 当前线程中直接调用
       sendInLoop(message);
     }
     else
     {
+      // 不在相同的线程中，将要执行的函数打包到关联的loop中执行
+      // 声明一个 TcpConnection 内部的 函数指针
       void (TcpConnection::*fp)(const StringPiece& message) = &TcpConnection::sendInLoop;
+      // std::function<void()>
       loop_->runInLoop(
           std::bind(fp,
                     this,     // FIXME
                     message.as_string()));
                     //std::forward<string>(message)));
+      // 打包成 本实例的 函数对象
     }
   }
 }
 
-// FIXME efficiency!!!
+// FIXME efficiency!!! 高效率的
 void TcpConnection::send(Buffer* buf)
 {
   if (state_ == kConnected)
   {
     if (loop_->isInLoopThread())
     {
+      // 将 buf 中的数据全部发送
       sendInLoop(buf->peek(), buf->readableBytes());
+      // 重置 buf
       buf->retrieveAll();
     }
     else
@@ -131,6 +148,7 @@ void TcpConnection::send(Buffer* buf)
   }
 }
 
+// 在loop线程中发送数据
 void TcpConnection::sendInLoop(const StringPiece& message)
 {
   sendInLoop(message.data(), message.size());
@@ -148,6 +166,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     return;
   }
   // if no thing in output queue, try writing directly
+  // 如果输出缓冲区中没有任何数据，直接写
   if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
   {
     nwrote = sockets::write(channel_->fd(), data, len);
@@ -156,11 +175,13 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
       remaining = len - nwrote;
       if (remaining == 0 && writeCompleteCallback_)
       {
+        // 写入完成，并且有 写入完成回调函数
         loop_->queueInLoop(std::bind(writeCompleteCallback_, shared_from_this()));
       }
     }
     else // nwrote < 0
     {
+      // 写入失败
       nwrote = 0;
       if (errno != EWOULDBLOCK)
       {
@@ -174,8 +195,10 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
   }
 
   assert(remaining <= len);
+  // 判断是否需要继续发送
   if (!faultError && remaining > 0)
   {
+    // 没有发生错误，并且还有剩余的数据需要发送
     size_t oldLen = outputBuffer_.readableBytes();
     if (oldLen + remaining >= highWaterMark_
         && oldLen < highWaterMark_

@@ -29,6 +29,7 @@ typedef struct sockaddr SA;
 
 // valgrind 
 #if VALGRIND || defined (NO_ACCEPT4)
+// 设置非阻塞 并且 exec 自动关闭
 void setNonBlockAndCloseOnExec(int sockfd)
 {
   // non-block
@@ -117,6 +118,7 @@ void sockets::listenOrDie(int sockfd)
   }
 }
 
+// 接受的连接fd 要设置 SOCK_NONBLOCK SOCK_CLOEXEC
 int sockets::accept(int sockfd, struct sockaddr_in6* addr)
 {
   socklen_t addrlen = static_cast<socklen_t>(sizeof *addr);
@@ -271,6 +273,7 @@ struct sockaddr_in6 sockets::getLocalAddr(int sockfd)
   struct sockaddr_in6 localaddr;
   memZero(&localaddr, sizeof localaddr);
   socklen_t addrlen = static_cast<socklen_t>(sizeof localaddr);
+  /* Put the local address of FD into *ADDR and its length in *LEN.  */  
   if (::getsockname(sockfd, sockaddr_cast(&localaddr), &addrlen) < 0)
   {
     LOG_SYSERR << "sockets::getLocalAddr";
@@ -290,7 +293,7 @@ struct sockaddr_in6 sockets::getPeerAddr(int sockfd)
   return peeraddr;
 }
 
-// 是否是本身连接
+// 是否是本身连接 ； 对端和本地借口相同
 bool sockets::isSelfConnect(int sockfd)
 {
   struct sockaddr_in6 localaddr = getLocalAddr(sockfd);

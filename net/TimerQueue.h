@@ -1,3 +1,5 @@
+// check ； 时间器队列
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -41,7 +43,7 @@ class TimerQueue : noncopyable
   ///
   /// Schedules the callback to be run at given time,
   /// repeats if @c interval > 0.0.
-  ///
+  /// 
   /// Must be thread safe. Usually be called from other threads.
   TimerId addTimer(TimerCallback cb,
                    Timestamp when,
@@ -61,7 +63,7 @@ class TimerQueue : noncopyable
 
   void addTimerInLoop(Timer* timer);
   void cancelInLoop(TimerId timerId);
-  // called when timerfd alarms
+  // called when timerfd alarms 处理时间警报
   void handleRead();
   // move out all expired timers
   std::vector<Entry> getExpired(Timestamp now);
@@ -71,8 +73,8 @@ class TimerQueue : noncopyable
 
   EventLoop* loop_;
   const int timerfd_;
-  Channel timerfdChannel_;
-  // Timer list sorted by expiration
+  Channel timerfdChannel_;      // 时间fd 的channel
+  // Timer list sorted by expiration ； set
   TimerList timers_;
 
   // for cancel()

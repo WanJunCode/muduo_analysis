@@ -1,3 +1,5 @@
+// check 缓冲区
+
 #include "muduo/net/Buffer.h"
 
 //#define BOOST_TEST_MODULE BufferTest

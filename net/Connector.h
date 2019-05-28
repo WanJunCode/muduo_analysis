@@ -1,4 +1,4 @@
-// check ，连接； 主要用于发起连接  
+// check ，连接； 主要用于发起连接  用于 tcpclient
 
 // socket 是一次性的, 当 connect 出错, 我们必须关闭该 socket, 重新创建一个 socket, 
 // 但是Connector是可以反复使用的,

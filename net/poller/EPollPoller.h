@@ -36,9 +36,9 @@ class EPollPoller : public Poller
   void removeChannel(Channel* channel) override;
 
  private:
-  static const int kInitEventListSize = 16;
+  static const int kInitEventListSize = 16;   // 初始化事件列表大小
 
-  static const char* operationToString(int op);
+  static const char* operationToString(int op); // 将操作转化为string
 
   void fillActiveChannels(int numEvents,
                           ChannelList* activeChannels) const;
@@ -46,8 +46,8 @@ class EPollPoller : public Poller
 
   typedef std::vector<struct epoll_event> EventList;
 
-  int epollfd_;
-  EventList events_;
+  int epollfd_;           // epoll fd
+  EventList events_;      // 事件列表
 };
 
 }  // namespace net

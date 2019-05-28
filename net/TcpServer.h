@@ -1,3 +1,5 @@
+// check ； tcp 服务器类，可以处理多线程任务
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -26,14 +28,16 @@ class Acceptor;
 class EventLoop;
 class EventLoopThreadPool;
 
-///
+/// tcp 服务器，支持单线程和多线程（线程池）
 /// TCP server, supports single-threaded and thread-pool models.
-///
+/// 
 /// This is an interface class, so don't expose too much details.
 class TcpServer : noncopyable
 {
  public:
+  // 线程池初始化回调函数
   typedef std::function<void(EventLoop*)> ThreadInitCallback;
+  // 枚举类型 是否复用端口
   enum Option
   {
     kNoReusePort,
@@ -54,7 +58,7 @@ class TcpServer : noncopyable
   /// Set the number of threads for handling input.
   ///
   /// Always accepts new connection in loop's thread.
-  /// Must be called before @c start
+  /// Must be called before @c start   必须在 start 函数前调用
   /// @param numThreads
   /// - 0 means all I/O in loop's thread, no thread will created.
   ///   this is the default value.
@@ -90,26 +94,31 @@ class TcpServer : noncopyable
   { writeCompleteCallback_ = cb; }
 
  private:
-  /// Not thread safe, but in loop
+  /// Not thread safe, but in loop 多线程中不安全，但是在单循环中ok
   void newConnection(int sockfd, const InetAddress& peerAddr);
-  /// Thread safe.
+  /// Thread safe. 多线程安全
   void removeConnection(const TcpConnectionPtr& conn);
-  /// Not thread safe, but in loop
+  /// Not thread safe, but in loop 在当前线程中删除
   void removeConnectionInLoop(const TcpConnectionPtr& conn);
 
+  // 存储客户端连接 map
   typedef std::map<string, TcpConnectionPtr> ConnectionMap;
 
   EventLoop* loop_;  // the acceptor loop
   const string ipPort_;
   const string name_;
-  std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor
+  std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor 避免泄露
   std::shared_ptr<EventLoopThreadPool> threadPool_;
+
+  // 回调函数
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
   ThreadInitCallback threadInitCallback_;
+  
+  // 原子类 表明开始状态
   AtomicInt32 started_;
-  // always in loop thread
+  // always in loop thread 轮询算法
   int nextConnId_;
   ConnectionMap connections_;
 };

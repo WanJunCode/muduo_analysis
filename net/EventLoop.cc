@@ -30,6 +30,7 @@ __thread EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
+// 创建 fd
 int createEventfd()
 {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -56,6 +57,7 @@ class IgnoreSigPipe
 IgnoreSigPipe initObj;
 }  // namespace
 
+// 获得当前线程的 eventloop
 EventLoop* EventLoop::getEventLoopOfCurrentThread()
 {
   return t_loopInThisThread;
@@ -67,12 +69,12 @@ EventLoop::EventLoop()
     eventHandling_(false),
     callingPendingFunctors_(false),
     iteration_(0),
-    threadId_(CurrentThread::tid()),
+    threadId_(CurrentThread::tid()),  // 获得
     poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
-    wakeupFd_(createEventfd()),
-    wakeupChannel_(new Channel(this, wakeupFd_)),
-    currentActiveChannel_(NULL)
+    wakeupFd_(createEventfd()),                           // 唤醒 fd
+    wakeupChannel_(new Channel(this, wakeupFd_)),         // 唤醒 fd 上的 channel
+    currentActiveChannel_(NULL)                           // 当前激活的 channel
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
   if (t_loopInThisThread)
@@ -82,8 +84,11 @@ EventLoop::EventLoop()
   }
   else
   {
+    // 赋值当前线程的 t_loopInThisThread
     t_loopInThisThread = this;
   }
+
+  // wakeup fd 设置读取回调函数
   wakeupChannel_->setReadCallback(
       std::bind(&EventLoop::handleRead, this));
   // we are always reading the wakeupfd
@@ -97,13 +102,15 @@ EventLoop::~EventLoop()
   wakeupChannel_->disableAll();
   wakeupChannel_->remove();
   ::close(wakeupFd_);
-  t_loopInThisThread = NULL;
+  t_loopInThisThread = NULL;      // 重置当前线程的 EventLoop
 }
 
+// 循环
 void EventLoop::loop()
 {
-  assert(!looping_);
+  assert(!looping_);    // 开始loop前，looping_必须为false
   assertInLoopThread();
+  // 设置状态
   looping_ = true;
   quit_ = false;  // FIXME: what if someone calls quit() before loop() ?
   LOG_TRACE << "EventLoop " << this << " start looping";
@@ -111,6 +118,8 @@ void EventLoop::loop()
   while (!quit_)
   {
     activeChannels_.clear();
+    
+    // io复用
     pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
     ++iteration_;
     if (Logger::logLevel() <= Logger::TRACE)
@@ -118,9 +127,10 @@ void EventLoop::loop()
       printActiveChannels();
     }
     // TODO sort channel by priority
-    eventHandling_ = true;
+    eventHandling_ = true;                                  // 标识开始处理event
     for (Channel* channel : activeChannels_)
     {
+      // 获得激活的 channel 设置为当前处理的 channel
       currentActiveChannel_ = channel;
       currentActiveChannel_->handleEvent(pollReturnTime_);
     }
@@ -172,6 +182,7 @@ void EventLoop::queueInLoop(Functor cb)
   }
 }
 
+// 获得pendingFunctors_队列的大小
 size_t EventLoop::queueSize() const
 {
   MutexLockGuard lock(mutex_);
@@ -183,6 +194,7 @@ TimerId EventLoop::runAt(Timestamp time, TimerCallback cb)
   return timerQueue_->addTimer(std::move(cb), time, 0.0);
 }
 
+// 延迟delay时间后运行函数 
 TimerId EventLoop::runAfter(double delay, TimerCallback cb)
 {
   Timestamp time(addTime(Timestamp::now(), delay));
@@ -200,6 +212,7 @@ void EventLoop::cancel(TimerId timerId)
   return timerQueue_->cancel(timerId);
 }
 
+// 更新 channel
 void EventLoop::updateChannel(Channel* channel)
 {
   assert(channel->ownerLoop() == this);
@@ -226,6 +239,7 @@ bool EventLoop::hasChannel(Channel* channel)
   return poller_->hasChannel(channel);
 }
 
+// 退出程序
 void EventLoop::abortNotInLoopThread()
 {
   LOG_FATAL << "EventLoop::abortNotInLoopThread - EventLoop " << this
@@ -233,6 +247,7 @@ void EventLoop::abortNotInLoopThread()
             << ", current thread id = " <<  CurrentThread::tid();
 }
 
+// 向 wakeup fd 写入一个数字，表示唤醒
 void EventLoop::wakeup()
 {
   uint64_t one = 1;
@@ -243,6 +258,7 @@ void EventLoop::wakeup()
   }
 }
 
+// 读取传入的 fd ，大小为 uint64_t 的8
 void EventLoop::handleRead()
 {
   uint64_t one = 1;
@@ -253,23 +269,27 @@ void EventLoop::handleRead()
   }
 }
 
+// 处理挂起的 函数体
 void EventLoop::doPendingFunctors()
 {
   std::vector<Functor> functors;
   callingPendingFunctors_ = true;
 
+  // 置换 pendingFunctors_ ==> functors
   {
-  MutexLockGuard lock(mutex_);
-  functors.swap(pendingFunctors_);
+    MutexLockGuard lock(mutex_);
+    functors.swap(pendingFunctors_);
   }
 
   for (const Functor& functor : functors)
   {
+    // 执行函数任务
     functor();
   }
   callingPendingFunctors_ = false;
 }
 
+// 打印所有激活的channels
 void EventLoop::printActiveChannels() const
 {
   for (const Channel* channel : activeChannels_)

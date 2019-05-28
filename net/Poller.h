@@ -28,6 +28,7 @@ class Channel;
 /// Base class for IO Multiplexing
 ///
 /// This class doesn't own the Channel objects.
+// 基类  纯虚函数
 class Poller : noncopyable
 {
  public:
@@ -59,7 +60,7 @@ class Poller : noncopyable
 
  protected:
   typedef std::map<int, Channel*> ChannelMap;
-  ChannelMap channels_;
+  ChannelMap channels_;     // std::map
 
  private:
   EventLoop* ownerLoop_;

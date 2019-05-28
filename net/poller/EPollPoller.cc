@@ -20,6 +20,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// 在 linux 上 poll 和 epoll 的事件是相似的
 // On Linux, the constants of poll(2) and epoll(4)
 // are expected to be the same.
 static_assert(EPOLLIN == POLLIN,        "epoll uses same flag values as poll");
@@ -31,15 +32,17 @@ static_assert(EPOLLHUP == POLLHUP,      "epoll uses same flag values as poll");
 
 namespace
 {
-const int kNew = -1;
-const int kAdded = 1;
-const int kDeleted = 2;
+const int kNew = -1;            // 新建
+const int kAdded = 1;           // 添加
+const int kDeleted = 2;         // 删除
 }
 
+// epoll_create 和 epoll_create1 类似，但是后者可以带入一个 flag 参数；
+// EPOLL_CLOEXEC 可以防止泄露给 exec 后的进程
 EPollPoller::EPollPoller(EventLoop* loop)
-  : Poller(loop),
+  : Poller(loop),       // 父类构造函数
     epollfd_(::epoll_create1(EPOLL_CLOEXEC)),
-    events_(kInitEventListSize)
+    events_(kInitEventListSize)   // 初始化 vector 的容量大小
 {
   if (epollfd_ < 0)
   {
@@ -55,6 +58,7 @@ EPollPoller::~EPollPoller()
 Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
 {
   LOG_TRACE << "fd total count " << channels_.size();
+  // 等待 epoll； epoll 本来使用 epoll_event 数组来存储，这里使用了动态的 vector epoll_event
   int numEvents = ::epoll_wait(epollfd_,
                                &*events_.begin(),
                                static_cast<int>(events_.size()),
@@ -64,7 +68,9 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   if (numEvents > 0)
   {
     LOG_TRACE << numEvents << " events happened";
+    // 加载 numEvents 个激活的事件到 activeChannels
     fillActiveChannels(numEvents, activeChannels);
+    // 如果监听的所有事件都被激活，则events大小翻倍
     if (implicit_cast<size_t>(numEvents) == events_.size())
     {
       events_.resize(events_.size()*2);
@@ -76,7 +82,8 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   }
   else
   {
-    // error happens, log uncommon ones
+    // error happens, log uncommon ones 记录epoll_wait发生的错误
+    // EINTR 表示被信号打断
     if (savedErrno != EINTR)
     {
       errno = savedErrno;
@@ -86,12 +93,15 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   return now;
 }
 
+// 将 activeChannels 的 前 numEvents 个事件激活
 void EPollPoller::fillActiveChannels(int numEvents,
                                      ChannelList* activeChannels) const
 {
+  // epoll 响应的事件个数一定要小于 events 数组的大小
   assert(implicit_cast<size_t>(numEvents) <= events_.size());
   for (int i = 0; i < numEvents; ++i)
   {
+    // muduo 高效的地方，从epoll_event中直接获得channel，然后执行
     Channel* channel = static_cast<Channel*>(events_[i].data.ptr);
 #ifndef NDEBUG
     int fd = channel->fd();
@@ -99,6 +109,7 @@ void EPollPoller::fillActiveChannels(int numEvents,
     assert(it != channels_.end());
     assert(it->second == channel);
 #endif
+    // 设置 channel 中接受到的 event 类型
     channel->set_revents(events_[i].events);
     activeChannels->push_back(channel);
   }
@@ -107,15 +118,18 @@ void EPollPoller::fillActiveChannels(int numEvents,
 void EPollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
+  // index 表示 channel 的索引
   const int index = channel->index();
   LOG_TRACE << "fd = " << channel->fd()
     << " events = " << channel->events() << " index = " << index;
+    // 如果执行的操作是 新建 或者 删除
   if (index == kNew || index == kDeleted)
   {
     // a new one, add with EPOLL_CTL_ADD
     int fd = channel->fd();
     if (index == kNew)
     {
+      // 添加channel 必须保证 vector 中找不到
       assert(channels_.find(fd) == channels_.end());
       channels_[fd] = channel;
     }
@@ -191,6 +205,8 @@ void EPollPoller::update(int operation, Channel* channel)
   }
 }
 
+// 打印对 fd 的 epoll 操作
+// 添加 、 删除 、 修改
 const char* EPollPoller::operationToString(int op)
 {
   switch (op)

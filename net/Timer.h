@@ -1,3 +1,5 @@
+// check 时间器
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -21,8 +23,9 @@ namespace net
 {
 
 ///
-/// Internal class for timer event.
+/// Internal class for timer event. 时间事件 内部类
 ///
+/// typedef std::function<void()> TimerCallback;                  // 时间器 回调函数
 class Timer : noncopyable
 {
  public:
@@ -45,16 +48,17 @@ class Timer : noncopyable
 
   void restart(Timestamp now);
 
+  // 获得当前创建了多少个时间器
   static int64_t numCreated() { return s_numCreated_.get(); }
 
  private:
   const TimerCallback callback_;
-  Timestamp expiration_;
-  const double interval_;
-  const bool repeat_;
-  const int64_t sequence_;
+  Timestamp expiration_;              // 超时时间戳
+  const double interval_;             // 间隔
+  const bool repeat_;                 // 是否重复
+  const int64_t sequence_;            // 序列
 
-  static AtomicInt64 s_numCreated_;
+  static AtomicInt64 s_numCreated_;   // 创建数量
 };
 
 }  // namespace net

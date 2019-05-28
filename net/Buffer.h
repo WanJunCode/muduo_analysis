@@ -87,7 +87,7 @@ class Buffer : public muduo::copyable
   size_t prependableBytes() const
   { return readerIndex_; }
 
-  // 获得数据开头位置
+  // 获得读取数据开头位置
   const char* peek() const
   { return begin() + readerIndex_; }
 

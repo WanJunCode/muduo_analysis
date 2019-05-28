@@ -1,3 +1,5 @@
+// check 定义了所有的回调函数
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //

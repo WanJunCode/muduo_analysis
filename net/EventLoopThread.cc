@@ -18,7 +18,7 @@ EventLoopThread::EventLoopThread(const ThreadInitCallback& cb,
   : loop_(NULL),
     exiting_(false),
     thread_(std::bind(&EventLoopThread::threadFunc, this), name),
-    mutex_(),
+    mutex_(),           // 默认构造函数
     cond_(mutex_),
     callback_(cb)
 {
@@ -36,16 +36,18 @@ EventLoopThread::~EventLoopThread()
   }
 }
 
+// 开启 eventloop， 等待 loop_ 开启完成
 EventLoop* EventLoopThread::startLoop()
 {
   assert(!thread_.started());
-  thread_.start();
+  thread_.start();    // 开启eventloop线程
 
   EventLoop* loop = NULL;
   {
     MutexLockGuard lock(mutex_);
     while (loop_ == NULL)
     {
+      // 等待 eventloop 指针被赋值
       cond_.wait();
     }
     loop = loop_;
@@ -65,13 +67,16 @@ void EventLoopThread::threadFunc()
 
   {
     MutexLockGuard lock(mutex_);
+    // 新建实例 地址赋值给 指针类变量，该类中可以根据该指针使用 eventloop
     loop_ = &loop;
+    // 提示指针已被赋值
     cond_.notify();
   }
 
   loop.loop();
   //assert(exiting_);
   MutexLockGuard lock(mutex_);
+  // mutex_ 保护临界区域 loop_
   loop_ = NULL;
 }
 

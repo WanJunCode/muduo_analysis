@@ -11,6 +11,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+// 实例
 AtomicInt64 Timer::s_numCreated_;
 
 void Timer::restart(Timestamp now)
