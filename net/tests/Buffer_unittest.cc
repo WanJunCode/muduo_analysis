@@ -12,6 +12,7 @@ using muduo::net::Buffer;
 
 BOOST_AUTO_TEST_CASE(testBufferAppendRetrieve)
 {
+  // 栈变量
   Buffer buf;
   BOOST_CHECK_EQUAL(buf.readableBytes(), 0);
   BOOST_CHECK_EQUAL(buf.writableBytes(), Buffer::kInitialSize);

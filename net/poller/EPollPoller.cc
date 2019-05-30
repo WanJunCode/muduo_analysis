@@ -1,3 +1,5 @@
+// epollfd_.data.ptr 保存 channel 指针
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
@@ -93,7 +95,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels)
   return now;
 }
 
-// 将 activeChannels 的 前 numEvents 个事件激活
+// 将 events_ 的前 numEvents 个事件激活 并将 channel 存入 activeChannel 中
 void EPollPoller::fillActiveChannels(int numEvents,
                                      ChannelList* activeChannels) const
 {
@@ -115,14 +117,19 @@ void EPollPoller::fillActiveChannels(int numEvents,
   }
 }
 
+// 被调用是因为 channel->enableReading() 再调用 channel->update() 然后调用 event_loop->updateChannel()
+// 最后调用 poll 或 epoll 的 updateChannel
+// index 在 poll 中是下标，在 epoll 中是三种状态
+// kNew || kDeleted => kAdded => update( EPOLL_CTL_ADD )
+// kAdded =>  update( EPOLL_CTL_DEL || EPOLL_CTL_MOD )
 void EPollPoller::updateChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
-  // index 表示 channel 的索引
+  // index 表示 channel 的索引（索引表示进行什么操作）
   const int index = channel->index();
   LOG_TRACE << "fd = " << channel->fd()
     << " events = " << channel->events() << " index = " << index;
-    // 如果执行的操作是 新建 或者 删除
+  // 如果执行的操作是 新建 或者 删除，需要先将channel 添加到 channels map 中
   if (index == kNew || index == kDeleted)
   {
     // a new one, add with EPOLL_CTL_ADD
@@ -139,29 +146,35 @@ void EPollPoller::updateChannel(Channel* channel)
       assert(channels_[fd] == channel);
     }
 
+    // kAdd kDeleted => kAdded
     channel->set_index(kAdded);
-    update(EPOLL_CTL_ADD, channel);
+    update(EPOLL_CTL_ADD, channel);   // 增加
   }
   else
   {
+    // index == kAdded
     // update existing one with EPOLL_CTL_MOD/DEL
     int fd = channel->fd();
     (void)fd;
     assert(channels_.find(fd) != channels_.end());
     assert(channels_[fd] == channel);
     assert(index == kAdded);
+    // 如果 channel 没有事件 就删除
     if (channel->isNoneEvent())
     {
-      update(EPOLL_CTL_DEL, channel);
+      update(EPOLL_CTL_DEL, channel);     // 删除
       channel->set_index(kDeleted);
     }
     else
     {
-      update(EPOLL_CTL_MOD, channel);
+      update(EPOLL_CTL_MOD, channel);     // 更改
     }
   }
 }
 
+// 只能在当前线程删除 channel
+// kAdded => update( EPOLL_CTL_DEL ) => kNew
+// kDeleted => kNew
 void EPollPoller::removeChannel(Channel* channel)
 {
   Poller::assertInLoopThread();
@@ -171,7 +184,9 @@ void EPollPoller::removeChannel(Channel* channel)
   assert(channels_[fd] == channel);
   assert(channel->isNoneEvent());
   int index = channel->index();
+  // 只有 kAdded 和 kDeleted 是可以被删除的状态
   assert(index == kAdded || index == kDeleted);
+  // std::map 删除
   size_t n = channels_.erase(fd);
   (void)n;
   assert(n == 1);
@@ -180,9 +195,11 @@ void EPollPoller::removeChannel(Channel* channel)
   {
     update(EPOLL_CTL_DEL, channel);
   }
+  // 设置删除后的channel 状态为 kNew
   channel->set_index(kNew);
 }
 
+// 更新对 epollfd 的操作
 void EPollPoller::update(int operation, Channel* channel)
 {
   struct epoll_event event;
@@ -196,6 +213,7 @@ void EPollPoller::update(int operation, Channel* channel)
   {
     if (operation == EPOLL_CTL_DEL)
     {
+      // 删除操作需要记录
       LOG_SYSERR << "epoll_ctl op =" << operationToString(operation) << " fd =" << fd;
     }
     else

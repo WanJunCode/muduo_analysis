@@ -32,6 +32,8 @@ class PollPoller : public Poller
   PollPoller(EventLoop* loop);
   ~PollPoller() override;
 
+  // 虚函数， poll 用于 io 复用 ， 将激活事件的 channel 存入 activeChannels 中
+  // 更新 channel ； 删除 channel ；
   Timestamp poll(int timeoutMs, ChannelList* activeChannels) override;
   void updateChannel(Channel* channel) override;
   void removeChannel(Channel* channel) override;

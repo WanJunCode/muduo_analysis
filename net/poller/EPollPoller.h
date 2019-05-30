@@ -1,3 +1,8 @@
+// epoll 内部实现，只和 channel 有关联
+
+// channel -- eventloop -- epoller
+// epoll 将激活的channel返回给 eventloop
+
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
 //
