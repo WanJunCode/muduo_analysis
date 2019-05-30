@@ -39,11 +39,13 @@ int createTimerfd()
   return timerfd;
 }
 
-// 计算到现在的时间
+// 计算 when 到现在的时间
+// now === when
 struct timespec howMuchTimeFromNow(Timestamp when)
 {
   int64_t microseconds = when.microSecondsSinceEpoch()
                          - Timestamp::now().microSecondsSinceEpoch();
+  // 最小的时间间隔
   if (microseconds < 100)
   {
     microseconds = 100;

@@ -26,11 +26,12 @@ using namespace muduo::net;
 
 namespace
 {
+/// 线程变量，每个线程中都有该指针，判断是否是当前线程
 __thread EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
-// 创建 fd
+// 创建 fd ； 非阻塞，exec执行后自动关闭
 int createEventfd()
 {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -54,12 +55,14 @@ class IgnoreSigPipe
 };
 #pragma GCC diagnostic error "-Wold-style-cast"
 
+// 创建 IgnoreSigPipe 实例，忽略 写入关闭的socket 时捕捉到的信号
 IgnoreSigPipe initObj;
 }  // namespace
 
 // 获得当前线程的 eventloop
 EventLoop* EventLoop::getEventLoopOfCurrentThread()
 {
+  // 线程变量的指针
   return t_loopInThisThread;
 }
 
@@ -69,14 +72,15 @@ EventLoop::EventLoop()
     eventHandling_(false),
     callingPendingFunctors_(false),
     iteration_(0),
-    threadId_(CurrentThread::tid()),  // 获得
-    poller_(Poller::newDefaultPoller(this)),
-    timerQueue_(new TimerQueue(this)),
-    wakeupFd_(createEventfd()),                           // 唤醒 fd
+    threadId_(CurrentThread::tid()),  // 获得当前的线程id
+    poller_(Poller::newDefaultPoller(this)),  // 创建一个 poll 内核
+    timerQueue_(new TimerQueue(this)),    // 时间器队列
+    wakeupFd_(createEventfd()),                           // 创建唤醒 fd
     wakeupChannel_(new Channel(this, wakeupFd_)),         // 唤醒 fd 上的 channel
     currentActiveChannel_(NULL)                           // 当前激活的 channel
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
+  // 构造函数创建 EventLoop 时，t_loopInThisThread 不能被赋值
   if (t_loopInThisThread)
   {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread
@@ -84,7 +88,7 @@ EventLoop::EventLoop()
   }
   else
   {
-    // 赋值当前线程的 t_loopInThisThread
+    // 赋值当前对象给 线程变量t_loopInThisThread
     t_loopInThisThread = this;
   }
 
@@ -94,6 +98,7 @@ EventLoop::EventLoop()
   // we are always reading the wakeupfd
   wakeupChannel_->enableReading();
 }
+// eventloop - wakeupFd_ - wakeupChannel_
 
 EventLoop::~EventLoop()
 {

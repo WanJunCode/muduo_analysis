@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid()
            << " Try adjusting the wall clock, see what happens.";
   EventLoop loop;
-  // print 作为回调函数
+  // print 作为定时器回调函数
   PeriodicTimer timer(&loop, 1, std::bind(print, "PeriodicTimer"));
   timer.start(); // 为 时间fd 设置时间
   loop.runEvery(1, std::bind(print, "EventLoop::runEvery"));

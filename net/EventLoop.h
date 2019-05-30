@@ -71,16 +71,16 @@ class EventLoop : noncopyable
   /// It wakes up the loop, and run the cb.
   /// If in the same loop thread, cb is run within the function.
   /// Safe to call from other threads.
-  // 在loop中直接调用回调函数
+  /// 在 loop 中执行函数,线程安全
   void runInLoop(Functor cb);
 
   /// Queues callback in the loop thread.
   /// Runs after finish pooling.
   /// Safe to call from other threads.
-  // 将回调函数存入线程池的队列中
+  /// 将回调函数存入任务队列中，线程安全
   void queueInLoop(Functor cb);
 
-  // 返回队列长度
+  /// 返回任务队列长度
   size_t queueSize() const;
 
   // timers
@@ -153,16 +153,16 @@ class EventLoop : noncopyable
   int64_t iteration_;                           // 记录 loop 循环的次数
   const pid_t threadId_;
   Timestamp pollReturnTime_;                    // poll返回时间戳
-  std::unique_ptr<Poller> poller_;
+  std::unique_ptr<Poller> poller_;              // io复用机制
   std::unique_ptr<TimerQueue> timerQueue_;      // 时间队列
-  int wakeupFd_;                                // 唤醒fd
+  int wakeupFd_;                                // 唤醒fd，使用 eventfd() 创建
   // unlike in TimerQueue, which is an internal class,
   // we don't expose Channel to client.
   std::unique_ptr<Channel> wakeupChannel_;      // 唤醒fd 的 channel
   boost::any context_;
 
   // scratch variables
-  ChannelList activeChannels_;                  // 激活的 channel
+  ChannelList activeChannels_;                  // 激活的 channel 链表
   Channel* currentActiveChannel_;               // 当前的活动 channel
 
   mutable MutexLock mutex_;

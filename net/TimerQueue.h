@@ -1,4 +1,5 @@
 // check ； 时间器队列
+// 只开放两个 api 1.addTimer 2.cancel
 
 // Copyright 2010, Shuo Chen.  All rights reserved.
 // http://code.google.com/p/muduo/
@@ -32,7 +33,7 @@ class TimerId;
 
 ///
 /// A best efforts timer queue.
-/// No guarantee that the callback will be on time.
+/// No guarantee that the callback will be on time. 并不保证回调函数准时
 ///
 class TimerQueue : noncopyable
 {
@@ -45,6 +46,7 @@ class TimerQueue : noncopyable
   /// repeats if @c interval > 0.0.
   /// 
   /// Must be thread safe. Usually be called from other threads.
+  /// 必须是线程安全的，通常都是在其他的线程中调用
   TimerId addTimer(TimerCallback cb,
                    Timestamp when,
                    double interval);
@@ -71,9 +73,9 @@ class TimerQueue : noncopyable
 
   bool insert(Timer* timer);
 
-  EventLoop* loop_;
-  const int timerfd_;
-  Channel timerfdChannel_;      // 时间fd 的channel
+  EventLoop* loop_;             // 关联的 eventloop
+  const int timerfd_;           // 时间器队列文件描述符
+  Channel timerfdChannel_;      // 时间器队列的channel
   // Timer list sorted by expiration ； set
   TimerList timers_;
 
