@@ -70,14 +70,23 @@ void readTimerfd(int timerfd, Timestamp now)
   }
 }
 
+// wake up loop by timerfd_settime()
 void resetTimerfd(int timerfd, Timestamp expiration)
-{
-  // wake up loop by timerfd_settime()
+{  
+//      struct timespec {
+//                time_t tv_sec;                /* Seconds */
+//                long   tv_nsec;               /* Nanoseconds */
+//            };
+//            struct itimerspec {
+//                struct timespec it_interval;  /* Interval for periodic timer */
+//                struct timespec it_value;     /* Initial expiration */
+//            };
   struct itimerspec newValue;
   struct itimerspec oldValue;
   memZero(&newValue, sizeof newValue);
   memZero(&oldValue, sizeof oldValue);
   newValue.it_value = howMuchTimeFromNow(expiration);
+  // 0 表示使用相对时间
   int ret = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
   if (ret)
   {

@@ -15,7 +15,7 @@ using namespace muduo::net;
 
 int numThreads = 0;
 class EchoClient;
-std::vector<std::unique_ptr<EchoClient>> clients;
+std::vector<std::unique_ptr<EchoClient>> clients;   // 客户端容器
 int current = 0;
 
 class EchoClient : noncopyable
@@ -45,6 +45,7 @@ class EchoClient : noncopyable
         << conn->peerAddress().toIpPort() << " is "
         << (conn->connected() ? "UP" : "DOWN");
 
+    // 客户端连接成功后，保存 clients:vector 在容器中
     if (conn->connected())
     {
       ++current;
@@ -95,10 +96,12 @@ int main(int argc, char* argv[])
       n = atoi(argv[2]);
     }
 
+    // 客户端容器 创建 n 个大小的空间
     clients.reserve(n);
     for (int i = 0; i < n; ++i)
     {
       char buf[32];
+      // string:number:printf
       snprintf(buf, sizeof buf, "%d", i+1);
       clients.emplace_back(new EchoClient(&loop, serverAddr, buf));
     }

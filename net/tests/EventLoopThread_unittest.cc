@@ -23,6 +23,7 @@ void quit(EventLoop* p)
 
 int main()
 {
+  // 打印主线程的信息
   print();
 
   {

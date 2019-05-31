@@ -107,8 +107,8 @@ class TcpServer : noncopyable
   EventLoop* loop_;  // the acceptor loop
   const string ipPort_;
   const string name_;
-  std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor 避免泄露
-  std::shared_ptr<EventLoopThreadPool> threadPool_;
+  std::unique_ptr<Acceptor> acceptor_; // avoid revealing Acceptor 接受器(接受来自客户端的连接) 使用唯一智能指针防止内存泄漏
+  std::shared_ptr<EventLoopThreadPool> threadPool_;   // 线程池
 
   // 回调函数
   ConnectionCallback connectionCallback_;

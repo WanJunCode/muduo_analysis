@@ -1,3 +1,5 @@
+// 回文 服务器
+
 #include "muduo/net/TcpServer.h"
 
 #include "muduo/base/Logging.h"
@@ -15,6 +17,7 @@ using namespace muduo::net;
 
 int numThreads = 0;
 
+// 回文服务器
 class EchoServer
 {
  public:
@@ -36,6 +39,7 @@ class EchoServer
   // void stop();
 
  private:
+  // 只要有新的客户端连接，打印相关信息，发送 “hello” 给客户端
   void onConnection(const TcpConnectionPtr& conn)
   {
     LOG_TRACE << conn->peerAddress().toIpPort() << " -> "
@@ -48,17 +52,21 @@ class EchoServer
 
   void onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp time)
   {
+    // 获取tcp client的缓冲区中所有的数据
     string msg(buf->retrieveAllAsString());
     LOG_TRACE << conn->name() << " recv " << msg.size() << " bytes at " << time.toString();
     if (msg == "exit\n")
     {
       conn->send("bye\n");
+      // 客户端关闭
       conn->shutdown();
     }
     if (msg == "quit\n")
     {
+      // 服务器关闭
       loop_->quit();
     }
+    // 回文
     conn->send(msg);
   }
 

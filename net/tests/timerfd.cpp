@@ -63,6 +63,7 @@ struct itimerspec {
 #define handle_error(msg) \
         do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+// 静态文件变量
 static int g_epollfd = -1;
 static int g_timerfd = -1;
 uint64_t tot_exp = 0;
@@ -74,11 +75,13 @@ static void help(void)
 
 static void print_elapsed_time(void)
 {
+    // 函数内静态变量，存储开始的事件
     static struct timespec start;
-    struct timespec curr;
+    struct timespec curr;   // 现在的时间
     static int first_call = 1;
     int secs, nsecs;
     
+    // 首次执行一次
     if (first_call) {
         first_call = 0;
         if (clock_gettime(CLOCK_MONOTONIC, &start) == -1) 
@@ -97,6 +100,7 @@ static void print_elapsed_time(void)
     printf("%d.%03d: ", secs, (nsecs + 500000) / 1000000);
 }
 
+// 时间处理回调函数
 void timerfd_handler(int fd)
 {
     uint64_t exp = 0;
@@ -120,11 +124,12 @@ void epoll_event_handle(void)
     while(1) 
     {   
         /* wait epoll event */
+        // epoll 监听 并将触发的事件存入事件数组
         fd_cnt = epoll_wait(g_epollfd, events, EPOLL_LISTEN_CNT, EPOLL_LISTEN_TIMEOUT); 
         for(i = 0; i < fd_cnt; i++) 
         {   
             sfd = events[i].data.fd;
-            if(events[i].events & EPOLLIN) 
+            if(events[i].events & EPOLLIN) // 是否是读取事件
             {   
                 if (sfd == g_timerfd) 
                 {
@@ -142,8 +147,9 @@ int epoll_add_fd(int fd)
 
     memset(&event, 0, sizeof(event));
     event.data.fd = fd;
-    event.events = EPOLLIN | EPOLLET;
-
+    event.events = EPOLLIN | EPOLLET; // ET 模式下的 读取事件
+    
+    // epoll 添加定时fd
     ret = epoll_ctl(g_epollfd, EPOLL_CTL_ADD, fd, &event);
     if(ret < 0) {
         LOG_ERROR("epoll_ctl Add fd:%d error, Error:[%d:%s]", fd, errno, strerror(errno));
@@ -175,7 +181,11 @@ int timerfd_init()
     int tmfd;
     int ret;
     struct itimerspec new_value;
-
+//     struct itimerspec
+//   {
+//     struct timespec it_interval;
+//     struct timespec it_value;
+//   };
     new_value.it_value.tv_sec = 2;
     new_value.it_value.tv_nsec = 0;
     new_value.it_interval.tv_sec = 1;
@@ -186,7 +196,7 @@ int timerfd_init()
         LOG_ERROR("timerfd_create error, Error:[%d:%s]", errno, strerror(errno));
         return -1;
     }
-
+    //  flags：参数flags为1代表设置的是绝对时间（TFD_TIMER_ABSTIME 表示绝对定时器）；为0代表相对时间。
     ret = timerfd_settime(tmfd, 0, &new_value, NULL);
     if (ret < 0) {
         LOG_ERROR("timerfd_settime error, Error:[%d:%s]", errno, strerror(errno));
@@ -205,10 +215,12 @@ int timerfd_init()
 
 int main(int argc, char **argv)
 {
+    // 创建 epoll fd
     if (epollfd_init() < 0) {
         return -1;
     }
 
+    // 创建 timerfd 并设置定时时间，添加到epoll中进行监听
     if (timerfd_init()) {
         return -1;
     }
