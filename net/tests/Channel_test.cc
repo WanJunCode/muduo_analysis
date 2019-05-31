@@ -46,13 +46,13 @@ class PeriodicTimer
   PeriodicTimer(EventLoop* loop, double interval, const TimerCallback& cb)
     : loop_(loop),
       timerfd_(muduo::net::detail::createTimerfd()),    // 创建一个 时间fd
-      timerfdChannel_(loop, timerfd_),
-      interval_(interval),
-      cb_(cb)  // 读取回调函数
+      timerfdChannel_(loop, timerfd_), // 创建时间fd 的 channel
+      interval_(interval),    // 获得时间器间隔
+      cb_(cb)  // 回调函数
   {
-    // 通道绑定回调函数
-    timerfdChannel_.setReadCallback(
-        std::bind(&PeriodicTimer::handleRead, this));
+    // channel设置读取回调函数
+    timerfdChannel_.setReadCallback(std::bind(&PeriodicTimer::handleRead, this));
+    // 开启监听
     timerfdChannel_.enableReading();
   }
 
@@ -65,6 +65,8 @@ class PeriodicTimer
     spec.it_interval = toTimeSpec(interval_);
     spec.it_value = spec.it_interval;
 
+    // 从 it_value 开始，每过 it_interval 秒执行一次
+
     // 为 时间fd 设置间隔
     int ret = ::timerfd_settime(timerfd_, 0 /* relative timer */, &spec, NULL);
     if (ret)
@@ -75,6 +77,7 @@ class PeriodicTimer
 
   ~PeriodicTimer()
   {
+    // channel 的清理过程
     timerfdChannel_.disableAll();
     // 调用channel绑定的loop去删除该channel
     timerfdChannel_.remove();
@@ -109,11 +112,11 @@ class PeriodicTimer
     return ts;
   }
 
-  EventLoop* loop_;
-  const int timerfd_;
-  Channel timerfdChannel_;
-  const double interval_; // in seconds
-  TimerCallback cb_;
+  EventLoop* loop_;         // 关联的 loop
+  const int timerfd_;       // 时间fd
+  Channel timerfdChannel_;  // 时间fd的channel
+  const double interval_;   // 时间间隔 in seconds
+  TimerCallback cb_;        // 回调函数
 };
 
 int main(int argc, char* argv[])
